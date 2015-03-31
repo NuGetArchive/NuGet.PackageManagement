@@ -12,4 +12,6 @@ The [NuGet Docs](http://docs.nuget.org) cover some NuGet package management conc
 
 ## Feedback
 
+We removed the issues link from this repo, please file bugs at [home](https://github.com/nuget/home/issues) instead. 
+
 Check out the [contributing](http://docs.nuget.org/contribute) page to see the best places to log issues and start discussions. The [NuGet Home](https://github.com/NuGet/Home) repo provides an overview of the different NuGet projects available.
