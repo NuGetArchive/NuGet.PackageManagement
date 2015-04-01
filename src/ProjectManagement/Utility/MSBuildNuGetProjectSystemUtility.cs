@@ -37,8 +37,8 @@ namespace NuGet.ProjectManagement
 
         internal static bool IsValid(FrameworkSpecificGroup frameworkSpecificGroup)
         {
-            // It is possible for a compatible frameworkSpecificGroup, there are no items
-            return (frameworkSpecificGroup != null && frameworkSpecificGroup.Items != null);
+            return (frameworkSpecificGroup != null && frameworkSpecificGroup.Items != null &&
+                (frameworkSpecificGroup.Items.Any() || !frameworkSpecificGroup.TargetFramework.Equals(NuGetFramework.AnyFramework)));
         }
 
         internal static void TryAddFile(IMSBuildNuGetProjectSystem msBuildNuGetProjectSystem, string path, Func<Stream> content)
@@ -83,7 +83,7 @@ namespace NuGet.ProjectManagement
             packageItemListAsArchiveEntryNames.Sort(new PackageItemComparer());
             try
             {
-                var zipArchiveEntryList = packageItemListAsArchiveEntryNames.Select(i => zipArchive.GetEntry(i)).ToList();
+                var zipArchiveEntryList = packageItemListAsArchiveEntryNames.Select(i => zipArchive.GetEntry(i)).Where(i => i != null).ToList();
                 try
                 {
                     var paths = zipArchiveEntryList.Select(file => ResolvePath(fileTransformers, fte => fte.InstallExtension,
@@ -194,6 +194,10 @@ namespace NuGet.ProjectManagement
                         {
                             if (transformer != null)
                             {
+                                // TODO: use the framework from packages.config instead of the current framework
+                                // which may have changed during re-targeting
+                                NuGetFramework projectFramework = msBuildNuGetProjectSystem.TargetFramework;
+
                                 List<InternalZipFileInfo> matchingFiles = new List<InternalZipFileInfo>();
                                 foreach(var otherPackagePath in otherPackagesPath)
                                 {
@@ -201,8 +205,10 @@ namespace NuGet.ProjectManagement
                                     {
                                         var otherPackageZipArchive = new ZipArchive(otherPackageStream);
                                         var otherPackageZipReader = new PackageReader(otherPackageZipArchive);
-                                        var mostCompatibleContentFilesGroup = GetMostCompatibleGroup(packageTargetFramework, otherPackageZipReader.GetContentItems(), altDirSeparator: true);
-                                        if(IsValid(mostCompatibleContentFilesGroup))
+
+                                        // use the project framework to find the group that would have been installed
+                                        var mostCompatibleContentFilesGroup = GetMostCompatibleGroup(projectFramework, otherPackageZipReader.GetContentItems(), altDirSeparator: true);
+                                        if(mostCompatibleContentFilesGroup != null && IsValid(mostCompatibleContentFilesGroup))
                                         {
                                             foreach(var otherPackageItem in mostCompatibleContentFilesGroup.Items)
                                             {
@@ -213,7 +219,7 @@ namespace NuGet.ProjectManagement
                                                 }
                                             }
                                         }
-                                    }                                    
+                                    }
                                 }
 
                                 try
@@ -276,7 +282,7 @@ namespace NuGet.ProjectManagement
 
         public static IEnumerable<string> GetFiles(IMSBuildNuGetProjectSystem msBuildNuGetProjectSystem, string path, string filter, bool recursive)
         {
-            return FileSystemUtility.GetFiles(msBuildNuGetProjectSystem.ProjectFullPath, path, filter, recursive);
+            return msBuildNuGetProjectSystem.GetFiles(path, filter, recursive);
         }
 
         public static void DeleteFileSafe(string path, Func<Stream> streamFactory, IMSBuildNuGetProjectSystem msBuildNuGetProjectSystem)
@@ -313,26 +319,7 @@ namespace NuGet.ProjectManagement
 
         public static IEnumerable<string> GetDirectories(IMSBuildNuGetProjectSystem msBuildNuGetProjectSystem, string path)
         {
-            try
-            {
-                path = PathUtility.EnsureTrailingSlash(Path.Combine(msBuildNuGetProjectSystem.ProjectFullPath, path));
-                if (!Directory.Exists(path))
-                {
-                    return Enumerable.Empty<string>();
-                }
-                return Directory.EnumerateDirectories(path)
-                                .Select(p => p.Substring(msBuildNuGetProjectSystem.ProjectFullPath.Length).TrimStart(Path.DirectorySeparatorChar));
-            }
-            catch (UnauthorizedAccessException)
-            {
-
-            }
-            catch (DirectoryNotFoundException)
-            {
-
-            }
-
-            return Enumerable.Empty<string>();
+            return msBuildNuGetProjectSystem.GetDirectories(path);
         }
 
         public static void DeleteDirectorySafe(IMSBuildNuGetProjectSystem msBuildNuGetProjectSystem, string path, bool recursive)
@@ -354,6 +341,7 @@ namespace NuGet.ProjectManagement
                 msBuildNuGetProjectSystem.NuGetProjectContext.Log(MessageLevel.Warning, Strings.Warning_DirectoryNotEmpty, path);
                 return;
             }
+            msBuildNuGetProjectSystem.DeleteDirectory(path, recursive);
 
             // Workaround for update-package TFS issue. If we're bound to TFS, do not try and delete directories.
             var sourceControlManager = SourceControlUtility.GetSourceControlManager(msBuildNuGetProjectSystem.NuGetProjectContext);

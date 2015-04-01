@@ -5,11 +5,11 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
-using NuGet.Client.VisualStudio;
-using NuGet.PackagingCore;
+using NuGet.Packaging.Core;
 using NuGet.ProjectManagement;
+using NuGet.Protocol.Core.Types;
+using NuGet.Protocol.VisualStudio;
 using NuGet.Resolver;
-using NuGet.Client;
 
 namespace NuGet.PackageManagement.UI
 {
@@ -85,12 +85,12 @@ namespace NuGet.PackageManagement.UI
                     await ExecuteActions(actions, uiService.ProgressWindow, userAction, token);
 
                     // update
-                    await uiService.RefreshPackageStatus();
+                    uiService.RefreshPackageStatus();
                 }
             }
             catch (Exception ex)
             {
-                uiService.ShowError(ex.Message, ex.ToString());
+                uiService.ShowError(ex);
             }
             finally
             {
@@ -323,7 +323,7 @@ namespace NuGet.PackageManagement.UI
         }
 
         private async Task<UIPackageMetadata> GetPackageMetadata(
-            IEnumerable<Client.SourceRepository> sources,
+            IEnumerable<SourceRepository> sources,
             PackageIdentity package,
             CancellationToken token)
         {

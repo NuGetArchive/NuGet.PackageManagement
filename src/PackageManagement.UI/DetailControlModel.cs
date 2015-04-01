@@ -6,9 +6,9 @@ using System.Linq;
 using System.Threading.Tasks;
 using NuGet.Versioning;
 using NuGet.ProjectManagement;
-using NuGet.Client.VisualStudio;
-using NuGet.PackagingCore;
+using NuGet.Packaging.Core;
 using System.Threading;
+using NuGet.Protocol.VisualStudio;
 
 namespace NuGet.PackageManagement.UI
 {
@@ -277,6 +277,37 @@ namespace NuGet.PackageManagement.UI
                     OnSelectedVersionChanged();
                     OnPropertyChanged("SelectedVersion");
                 }
+            }
+        }
+
+        // Caculate the version to select among _versions and select it
+        protected void SelectVersion()
+        {
+            if (_versions.Count == 0)
+            {
+                // there's nothing to select
+                return;
+            }
+
+            VersionForDisplay versionToSelect = null;
+            if (SelectedAction == Resources.Action_Install)
+            {
+                versionToSelect = _versions
+                    .Where(v => v != null && v.Version.Equals(_searchResultPackage.Version))
+                    .FirstOrDefault();
+                if (versionToSelect == null)
+                {
+                    versionToSelect = _versions[0];
+                }
+            }
+            else
+            {
+                versionToSelect = _versions[0];
+            }
+
+            if (versionToSelect != null)
+            {
+                SelectedVersion = versionToSelect;
             }
         }
 

@@ -1,5 +1,4 @@
-﻿using NuGet.Client;
-using NuGet.PackagingCore;
+﻿using NuGet.Packaging.Core;
 using NuGet.ProjectManagement;
 using System;
 using System.Collections.Generic;
@@ -7,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
+using NuGet.Protocol.Core.Types;
 
 namespace NuGet.PackageManagement.UI
 {
@@ -65,7 +65,7 @@ namespace NuGet.PackageManagement.UI
         /// <summary>
         /// Reports that an error has occurred.
         /// </summary>
-        void ShowError(string message, string detail);
+        void ShowError(Exception ex);
 
         /// <summary>
         /// File conflict option
@@ -75,7 +75,7 @@ namespace NuGet.PackageManagement.UI
         /// <summary>
         /// Refreshes the package details and installed status icons
         /// </summary>
-        Task RefreshPackageStatus();
+        void RefreshPackageStatus();
 
         SourceRepository ActiveSource { get; }
 

@@ -7,9 +7,9 @@ using System.Threading.Tasks;
 using System.Windows.Threading;
 using System.Windows;
 using NuGet.ProjectManagement;
-using NuGet.PackagingCore;
+using NuGet.Packaging.Core;
 using System.Diagnostics;
-using NuGet.Client;
+using NuGet.Protocol.Core.Types;
 
 namespace NuGet.PackageManagement.UI
 {
@@ -253,13 +253,13 @@ namespace NuGet.PackageManagement.UI
             }
         }
 
-        public async Task RefreshPackageStatus()
+        public void RefreshPackageStatus()
         {
             if (PackageManagerControl != null)
             {
-                await UIDispatcher.Invoke(async () =>
+                UIDispatcher.Invoke(() =>
                 {
-                    await PackageManagerControl.UpdatePackageStatus();
+                    PackageManagerControl.UpdatePackageStatus();
                 });
             }
 
@@ -313,11 +313,24 @@ namespace NuGet.PackageManagement.UI
             }
         }
 
-        public void ShowError(string message, string detail)
+        public void ShowError(Exception ex)
         {
-            _uiProjectContext.Log(MessageLevel.Error, detail);
+            if (ex is NuGet.Resolver.NuGetResolverConstraintException ||
+                ex is PackageAlreadyInstalledException ||
+                ex is NuGetVersionNotSatisfiedException ||
+                ex is NuGet.Frameworks.FrameworkException ||
+                ex is NuGet.Packaging.Core.PackagingException)
+            {
+                // for exceptions that are known to be normal error cases, just
+                // display the message.
+                _uiProjectContext.Log(MessageLevel.Info, ex.Message);
+            }
+            else
+            {
+                _uiProjectContext.Log(MessageLevel.Error, ex.ToString());
+            }
 
-            _uiProjectContext.ReportError(message);
+            _uiProjectContext.ReportError(ex.Message);
         }
     }
 

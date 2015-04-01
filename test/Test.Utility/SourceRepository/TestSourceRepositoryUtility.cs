@@ -1,5 +1,4 @@
-﻿using NuGet.Client;
-using NuGet.Configuration;
+﻿using NuGet.Configuration;
 using NuGet.PackageManagement;
 using System;
 using System.Collections.Generic;
@@ -7,6 +6,8 @@ using System.ComponentModel.Composition;
 using System.ComponentModel.Composition.Hosting;
 using System.IO;
 using System.Reflection;
+using NuGet.Protocol.Core.Types;
+using NuGet.Protocol.VisualStudio;
 
 namespace Test.Utility
 {
@@ -16,18 +17,18 @@ namespace Test.Utility
         public static PackageSource V3PackageSource = new PackageSource("https://api.nuget.org/v3/index.json", "v3");
         public TestSourceRepositoryUtility() {}
 
-        [ImportMany]
-        public Lazy<INuGetResourceProvider, INuGetResourceProviderMetadata>[] ResourceProviders;
+        public IEnumerable<Lazy<INuGetResourceProvider>> ResourceProviders { get; private set; }
 
-        private CompositionContainer Initialize()
+        private void Initialize()
         {
-            var aggregateCatalog = new AggregateCatalog();
-            {
-                aggregateCatalog.Catalogs.Add(new DirectoryCatalog(Environment.CurrentDirectory, "*.dll"));
-                var container = new CompositionContainer(aggregateCatalog);
-                container.ComposeParts(this);
-                return container;
-            }
+            ResourceProviders = Repository.Provider.GetVisualStudio();
+            //var aggregateCatalog = new AggregateCatalog();
+            //{
+            //    aggregateCatalog.Catalogs.Add(new DirectoryCatalog(Environment.CurrentDirectory, "*.dll"));
+            //    var container = new CompositionContainer(aggregateCatalog);
+            //    container.ComposeParts(this);
+            //    return container;
+            //}
         }
 
         public static SourceRepositoryProvider CreateV3OnlySourceRepositoryProvider()
@@ -43,7 +44,8 @@ namespace Test.Utility
         public static SourceRepositoryProvider CreateSourceRepositoryProvider(IEnumerable<PackageSource> packageSources)
         {
             var thisUtility = new TestSourceRepositoryUtility();
-            var container = thisUtility.Initialize();
+            //var container = thisUtility.Initialize();
+            thisUtility.Initialize();
             var packageSourceProvider = new TestPackageSourceProvider(packageSources);
 
             var sourceRepositoryProvider = new SourceRepositoryProvider(packageSourceProvider, thisUtility.ResourceProviders);
@@ -53,7 +55,8 @@ namespace Test.Utility
         public static SourceRepositoryProvider CreateSourceRepositoryProvider(IPackageSourceProvider packageSourceProvider)
         {
             var thisUtility = new TestSourceRepositoryUtility();
-            var container = thisUtility.Initialize();
+            //var container = thisUtility.Initialize();
+            thisUtility.Initialize();
 
             var sourceRepositoryProvider = new SourceRepositoryProvider(packageSourceProvider, thisUtility.ResourceProviders);
             return sourceRepositoryProvider;

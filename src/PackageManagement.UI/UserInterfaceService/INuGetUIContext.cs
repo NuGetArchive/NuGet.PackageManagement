@@ -1,10 +1,10 @@
-﻿using NuGet.Client;
-using NuGet.ProjectManagement;
+﻿using NuGet.ProjectManagement;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using NuGet.Protocol.Core.Types;
 
 namespace NuGet.PackageManagement.UI
 {
@@ -29,6 +29,6 @@ namespace NuGet.PackageManagement.UI
         UserSettings GetSettings(string key);
 
         // Persist settings 
-        void SaveSettings();
+        void PersistSettings();
     }
 }

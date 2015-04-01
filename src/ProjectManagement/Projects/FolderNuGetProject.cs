@@ -1,6 +1,6 @@
 ﻿using NuGet.Frameworks;
 using NuGet.Packaging;
-using NuGet.PackagingCore;
+using NuGet.Packaging.Core;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -137,13 +137,30 @@ namespace NuGet.ProjectManagement
                 string packageDirectoryPath = Path.GetDirectoryName(packageFilePath);
                 using (var packageStream = File.OpenRead(packageFilePath))
                 {
+                    var installedSatelliteFilesPair = await PackageHelper.GetInstalledSatelliteFiles(packageStream, packageIdentity, PackagePathResolver, PackageSaveMode, token);
+                    var runtimePackageDirectory = installedSatelliteFilesPair.Item1;
+                    var installedSatelliteFiles = installedSatelliteFilesPair.Item2;
+                    if (!String.IsNullOrEmpty(runtimePackageDirectory))
+                    {
+                        try
+                        {
+                            // Delete all the package files now
+                            FileSystemUtility.DeleteFiles(installedSatelliteFiles, runtimePackageDirectory, nuGetProjectContext);
+                        }
+                        catch (Exception ex)
+                        {
+                            nuGetProjectContext.Log(MessageLevel.Warning, ex.Message);
+                            // Catch all exception with delete so that the package file is always deleted
+                        }
+                    }
+
                     // Get all the package files before deleting the package file
-                    var allInstalledFiles = await PackageHelper.GetAllInstalledPackageFiles(packageStream, packageIdentity, PackagePathResolver, PackageSaveMode, token);
+                    var installedPackageFiles = await PackageHelper.GetInstalledPackageFiles(packageStream, packageIdentity, PackagePathResolver, PackageSaveMode, token);
 
                     try
                     {
                         // Delete all the package files now
-                        FileSystemUtility.DeleteFiles(allInstalledFiles, Root, nuGetProjectContext);
+                        FileSystemUtility.DeleteFiles(installedPackageFiles, packageDirectoryPath, nuGetProjectContext);
                     }
                     catch (Exception ex)
                     {
@@ -156,7 +173,7 @@ namespace NuGet.ProjectManagement
                 FileSystemUtility.DeleteFile(packageFilePath, nuGetProjectContext);
 
                 // Delete the package directory if any
-                FileSystemUtility.DeleteDirectorySafe(packageDirectoryPath, recursive: false, nuGetProjectContext: nuGetProjectContext);
+                FileSystemUtility.DeleteDirectorySafe(packageDirectoryPath, recursive: true, nuGetProjectContext: nuGetProjectContext);
 
                 // If this is the last package delete the package directory
                 // If this is the last package delete the package directory

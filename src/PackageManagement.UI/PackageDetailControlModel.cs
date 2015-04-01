@@ -6,7 +6,7 @@ using NuGet.Versioning;
 using NuGet.ProjectManagement;
 using System;
 using NuGet.Packaging;
-using NuGet.PackagingCore;
+using NuGet.Packaging.Core;
 
 namespace NuGet.PackageManagement.UI
 {
@@ -162,10 +162,7 @@ namespace NuGet.PackageManagement.UI
                 Debug.Fail("Unexpected Action: " + SelectedAction.ToString());
             }
 
-            if (_versions.Count > 0)
-            {
-                SelectedVersion = _versions[0];
-            }
+            SelectVersion();
 
             OnPropertyChanged("Versions");
         }

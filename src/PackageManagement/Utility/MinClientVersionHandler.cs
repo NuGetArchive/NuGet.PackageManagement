@@ -1,5 +1,5 @@
 ﻿using NuGet.Packaging;
-using NuGet.PackagingCore;
+using NuGet.Packaging.Core;
 using NuGet.ProjectManagement;
 using System;
 using System.Globalization;
@@ -23,14 +23,6 @@ namespace NuGet.PackageManagement
                     String.Format(CultureInfo.CurrentCulture, Strings.PackageMinVersionNotSatisfied, packageIdentity,
                     packageMinClientVersion.ToNormalizedString(), Constants.NuGetSemanticVersion.ToNormalizedString()));
             }
-        }
-    }
-
-    public class NuGetVersionNotSatisfiedException : Exception
-    {
-        public NuGetVersionNotSatisfiedException(string message)
-            : base(message)
-        {
         }
     }
 }

@@ -1,9 +1,9 @@
-﻿using NuGet.Client;
-using NuGet.Configuration;
+﻿using NuGet.Configuration;
 using NuGet.Frameworks;
 using NuGet.Packaging;
-using NuGet.PackagingCore;
+using NuGet.Packaging.Core;
 using NuGet.ProjectManagement;
+using NuGet.Protocol.Core.Types;
 using NuGet.Resolver;
 using NuGet.Versioning;
 using System;
@@ -23,23 +23,6 @@ namespace NuGet.PackageManagement
     /// </summary>
     public class NuGetPackageManager
     {
-        /// <summary>
-        /// Event to be raised while installing a package
-        /// </summary>
-        public event EventHandler<PackageOperationEventArgs> PackageInstalling;
-        /// <summary>
-        /// Event to be raised while installing a package
-        /// </summary>
-        public event EventHandler<PackageOperationEventArgs> PackageInstalled;
-        /// <summary>
-        /// Event to be raised while installing a package
-        /// </summary>
-        public event EventHandler<PackageOperationEventArgs> PackageUninstalling;
-        /// <summary>
-        /// Event to be raised while installing a package
-        /// </summary>
-        public event EventHandler<PackageOperationEventArgs> PackageUninstalled;
-
         private ISourceRepositoryProvider SourceRepositoryProvider { get; set; }
 
         private ISolutionManager SolutionManager { get; set; }
@@ -212,6 +195,13 @@ namespace NuGet.PackageManagement
                 throw new InvalidOperationException(String.Format(CultureInfo.CurrentCulture, Strings.UnknownPackage, packageId));
             }
 
+            var projectInstalledPackageReferences = await nuGetProject.GetInstalledPackagesAsync(token);
+            var installedPackageReference = projectInstalledPackageReferences.Where(pr => StringComparer.OrdinalIgnoreCase.Equals(pr.PackageIdentity.Id, packageId)).FirstOrDefault();
+            if(installedPackageReference != null && installedPackageReference.PackageIdentity.Version > latestVersion)
+            {
+                throw new InvalidOperationException(String.Format(CultureInfo.CurrentCulture, Strings.NewerVersionAlreadyReferenced, packageId));
+            }
+
             // Step-2 : Call InstallPackage(project, packageIdentity)
             return await PreviewInstallPackageAsync(nuGetProject, new PackageIdentity(packageId, latestVersion), resolutionContext,
                 nuGetProjectContext, primarySourceRepository, secondarySources, token);
@@ -269,6 +259,7 @@ namespace NuGet.PackageManagement
             }
 
             List<NuGetProjectAction> nuGetProjectActions = new List<NuGetProjectAction>();
+            if (!packageTargetIdsForResolver.Any()) return nuGetProjectActions;
             // TODO: these sources should be ordered
             // TODO: search in only the active source but allow dependencies to come from other sources?
 
@@ -305,6 +296,9 @@ namespace NuGet.PackageManagement
                         projectInstalledPackageReferences.Select(p => p.PackageIdentity));
                 }
 
+                // Remove versions that do not satisfy 'allowedVersions' attribute in packages.config, if any
+                prunedAvailablePackages = PrunePackageTree.PruneDisallowedVersions(prunedAvailablePackages, projectInstalledPackageReferences);
+
                 // Step-2 : Call IPackageResolver.Resolve to get new list of installed packages
                 // TODO: Consider using IPackageResolver once it is extensible
                 var packageResolver = new PackageResolver(resolutionContext.DependencyBehavior);
@@ -322,13 +316,9 @@ namespace NuGet.PackageManagement
             {
                 throw;
             }
-            catch (AggregateException)
+            catch (AggregateException aggregateEx)
             {
-                throw;
-            }
-            catch (NuGetResolverConstraintException)
-            {
-                throw;
+                throw new InvalidOperationException(aggregateEx.Message, aggregateEx);
             }
             catch (Exception ex)
             {
@@ -439,6 +429,9 @@ namespace NuGet.PackageManagement
 
                 // TODO: prune down level packages?
 
+                // Remove versions that do not satisfy 'allowedVersions' attribute in packages.config, if any
+                prunedAvailablePackages = PrunePackageTree.PruneDisallowedVersions(prunedAvailablePackages, projectInstalledPackageReferences);
+
                 // Step-2 : Call IPackageResolver.Resolve to get new list of installed packages                
                 // TODO: Consider using IPackageResolver once it is extensible
                 var packageResolver = new PackageResolver(resolutionContext.DependencyBehavior);
@@ -480,13 +473,9 @@ namespace NuGet.PackageManagement
             {
                 throw;
             }
-            catch (AggregateException)
+            catch (AggregateException aggregateEx)
             {
-                throw;
-            }
-            catch (NuGetResolverConstraintException)
-            {
-                throw;
+                throw new InvalidOperationException(aggregateEx.Message, aggregateEx);
             }
             catch (Exception ex)
             {
@@ -649,12 +638,18 @@ namespace NuGet.PackageManagement
             {
                 try
                 {
+                    bool downgradeAllowed = false;
                     var packageTargetsForResolver = new HashSet<PackageIdentity>(oldListOfInstalledPackages, PackageIdentity.Comparer);
                     // Note: resolver needs all the installed packages as targets too. And, metadata should be gathered for the installed packages as well
                     var installedPackageWithSameId = packageTargetsForResolver.Where(p => p.Id.Equals(packageIdentity.Id, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
                     if(installedPackageWithSameId != null)
                     {
                         packageTargetsForResolver.Remove(installedPackageWithSameId);
+                        if(installedPackageWithSameId.Version > packageIdentity.Version)
+                        {
+                            // Looks like the installed package is of higher version than one being installed. So, we take it that downgrade is allowed
+                            downgradeAllowed = true;
+                        }
                     }
                     packageTargetsForResolver.Add(packageIdentity);
 
@@ -691,6 +686,9 @@ namespace NuGet.PackageManagement
                         prunedAvailablePackages = PrunePackageTree.PrunePreleaseForStableTargets(prunedAvailablePackages, packageTargetsForResolver);
                     }
 
+                    // Remove versions that do not satisfy 'allowedVersions' attribute in packages.config, if any
+                    prunedAvailablePackages = PrunePackageTree.PruneDisallowedVersions(prunedAvailablePackages, projectInstalledPackageReferences);
+
                     // TODO: prune down level packages?
 
                     // Step-2 : Call IPackageResolver.Resolve to get new list of installed packages
@@ -718,9 +716,22 @@ namespace NuGet.PackageManagement
                     // based on newPackages obtained in Step-2 and project.GetInstalledPackages                    
 
                     nuGetProjectContext.Log(MessageLevel.Info, Strings.ResolvingActionsToInstallPackage, packageIdentity);
-                    var newPackagesToUninstall = oldListOfInstalledPackages
-                        .Where(op => newListOfInstalledPackages
-                            .Where(np => op.Id.Equals(np.Id, StringComparison.OrdinalIgnoreCase) && !op.Version.Equals(np.Version)).Any());
+                    var newPackagesToUninstall = new List<PackageIdentity>();
+                    foreach(var oldInstalledPackage in oldListOfInstalledPackages)
+                    {
+                        var newPackageWithSameId = newListOfInstalledPackages
+                            .Where(np => oldInstalledPackage.Id.Equals(np.Id, StringComparison.OrdinalIgnoreCase) &&
+                            !oldInstalledPackage.Version.Equals(np.Version)).FirstOrDefault();
+
+                        if(newPackageWithSameId != null)
+                        {
+                            if(!downgradeAllowed && oldInstalledPackage.Version > newPackageWithSameId.Version)
+                            {
+                                throw new InvalidOperationException(String.Format(CultureInfo.CurrentCulture, Strings.NewerVersionAlreadyReferenced, newPackageWithSameId.Id));
+                            }
+                            newPackagesToUninstall.Add(oldInstalledPackage);
+                        }
+                    }
                     var newPackagesToInstall = newListOfInstalledPackages.Where(p => !oldListOfInstalledPackages.Contains(p));
 
                     foreach (PackageIdentity newPackageToUninstall in newPackagesToUninstall)
@@ -748,13 +759,9 @@ namespace NuGet.PackageManagement
                 {
                     throw;
                 }
-                catch (AggregateException)
+                catch (AggregateException aggregateEx)
                 {
-                    throw;
-                }
-                catch (NuGetResolverException)
-                {
-                    throw;
+                    throw new InvalidOperationException(aggregateEx.Message, aggregateEx);
                 }
                 catch (Exception ex)
                 {
@@ -778,20 +785,51 @@ namespace NuGet.PackageManagement
             return nuGetProjectActions;
         }
 
+        /// <summary>
+        /// Check all sources in parallel to see if the package exists while respecting the order of the list.
+        /// </summary>
         private static async Task<SourceRepository> GetSourceRepository(PackageIdentity packageIdentity, IEnumerable<SourceRepository> sourceRepositories)
         {
+            SourceRepository source = null;
+
+            // TODO: move this timeout to a better place
+            // TODO: what should the timeout be?
+            // Give up after 5 minutes
+            CancellationTokenSource tokenSource = new CancellationTokenSource(TimeSpan.FromMinutes(5));
+
+            var results = new Queue<KeyValuePair<SourceRepository, Task<bool>>>();
+
             foreach (var sourceRepository in sourceRepositories)
+            {
+                // TODO: fetch the resource in parallel also
+                var metadataResource = await sourceRepository.GetResourceAsync<MetadataResource>();
+                if (metadataResource != null)
+                {
+                    var task = Task.Run(async () => await metadataResource.Exists(packageIdentity, tokenSource.Token), tokenSource.Token);
+                    results.Enqueue(new KeyValuePair<SourceRepository, Task<bool>>(sourceRepository, task));
+                }
+            }
+
+            while (results.Count > 0)
             {
                 try
                 {
-                    var metadataResource = await sourceRepository.GetResourceAsync<MetadataResource>();
-                    if (metadataResource != null)
+                    var pair = results.Dequeue();
+                    bool exists = await pair.Value;
+
+                    // take only the first true result, but continue waiting for the remaining cancelled
+                    // tasks to keep things from getting out of control.
+                    if (source == null && exists)
                     {
-                        if (await metadataResource.Exists(packageIdentity, CancellationToken.None))
-                        {
-                            return sourceRepository;
-                        }
+                        source = pair.Key;
+
+                        // there is no need to finish trying the others
+                        tokenSource.Cancel();
                     }
+                }
+                catch (TaskCanceledException)
+                {
+                    // ignore these
                 }
                 catch (Exception)
                 {
@@ -799,7 +837,13 @@ namespace NuGet.PackageManagement
                 }
             }
 
-            throw new InvalidOperationException(String.Format(CultureInfo.CurrentCulture, Strings.UnknownPackageSpecificVersion, packageIdentity.Id, packageIdentity.Version));
+            if (source == null)
+            {
+                // no matches were found
+                throw new InvalidOperationException(String.Format(CultureInfo.CurrentCulture, Strings.UnknownPackageSpecificVersion, packageIdentity.Id, packageIdentity.Version));
+            }
+
+            return source;
         }
 
         /// <summary>
@@ -958,7 +1002,7 @@ namespace NuGet.PackageManagement
             HashSet<PackageIdentity> packageWithDirectoriesToBeDeleted = new HashSet<PackageIdentity>(PackageIdentity.Comparer);
             try
             {
-                await nuGetProject.PreProcessAsync();
+                await nuGetProject.PreProcessAsync(nuGetProjectContext, token);
                 foreach (NuGetProjectAction nuGetProjectAction in nuGetProjectActions)
                 {
                     executedNuGetProjectActions.Push(nuGetProjectAction);
@@ -974,8 +1018,12 @@ namespace NuGet.PackageManagement
                             await ExecuteInstallAsync(nuGetProject, nuGetProjectAction.PackageIdentity, targetPackageStream, packageWithDirectoriesToBeDeleted, nuGetProjectContext, token);
                         }
                     }
+
+                    string toFromString = nuGetProjectAction.NuGetProjectActionType == NuGetProjectActionType.Install ? Strings.To : Strings.From;
+                    nuGetProjectContext.Log(MessageLevel.Info, Strings.SuccessfullyExecutedPackageAction,
+                        nuGetProjectAction.NuGetProjectActionType.ToString().ToLowerInvariant(), nuGetProjectAction.PackageIdentity.ToString(), toFromString + " " + nuGetProject.GetMetadata<string>(NuGetProjectMetadataKeys.Name));
                 }
-                await nuGetProject.PostProcessAsync();
+                await nuGetProject.PostProcessAsync(nuGetProjectContext, token);
 
                 await OpenReadmeFile(nuGetProjectContext, token);
             }
@@ -1107,14 +1155,6 @@ namespace NuGet.PackageManagement
             // TODO: MinClientVersion check should be performed in preview. Can easily avoid a lot of rollback
             MinClientVersionHandler.CheckMinClientVersion(packageStream, packageIdentity);
 
-            var packageOperationEventArgs = new PackageOperationEventArgs(packageIdentity);
-            if(PackageInstalling != null)
-            {
-                PackageInstalling(this, packageOperationEventArgs);
-            }
-
-            PackageEventsProvider.Instance.NotifyInstalling(new PackageEventArgs(this, nuGetProject, packageIdentity, null));
-
             packageWithDirectoriesToBeDeleted.Remove(packageIdentity);
             await nuGetProject.InstallPackageAsync(packageIdentity, packageStream, nuGetProjectContext, token);            
 
@@ -1123,33 +1163,17 @@ namespace NuGet.PackageManagement
             //{
             //    return;
             //}
-
-            if(PackageInstalled != null)
-            {
-                PackageInstalled(this, packageOperationEventArgs);
-            }
-
-            PackageEventsProvider.Instance.NotifyInstalled(new PackageEventArgs(this, nuGetProject, packageIdentity, null));
         }
 
         private async Task ExecuteUninstallAsync(NuGetProject nuGetProject, PackageIdentity packageIdentity, HashSet<PackageIdentity> packageWithDirectoriesToBeDeleted,
             INuGetProjectContext nuGetProjectContext, CancellationToken token)
         {
-            // Step-1: Raise package uninstalling event
-            var packageOperationEventArgs = new PackageOperationEventArgs(packageIdentity);
-            if (PackageUninstalling != null)
-            {
-                PackageUninstalling(this, packageOperationEventArgs);
-            }
-
-            PackageEventsProvider.Instance.NotifyUninstalling(new PackageEventArgs(this, nuGetProject, packageIdentity, null));
-
-            // Step-2: Call nuGetProject.UninstallPackage
+            // Step-1: Call nuGetProject.UninstallPackage
             await nuGetProject.UninstallPackageAsync(packageIdentity, nuGetProjectContext, token);
 
-            // Step-3: Check if the package directory could be deleted
+            // Step-2: Check if the package directory could be deleted
             if (!(nuGetProject is ProjectManagement.Projects.ProjectKNuGetProjectBase) &&
-                !await PackageExistsInAnotherNuGetProject(nuGetProject, packageIdentity, SolutionManager, nuGetProjectContext, token))
+                !await PackageExistsInAnotherNuGetProject(nuGetProject, packageIdentity, SolutionManager, token))
             {
                 packageWithDirectoriesToBeDeleted.Add(packageIdentity);
             }
@@ -1159,18 +1183,14 @@ namespace NuGet.PackageManagement
             //{
             //    return;
             //}
-
-            // Step-4: Raise PackageUninstalled event
-            if (PackageUninstalled != null)
-            {
-                PackageUninstalled(this, packageOperationEventArgs);
-            }
-
-            PackageEventsProvider.Instance.NotifyUninstalled(new PackageEventArgs(this, nuGetProject, packageIdentity, null));
         }
 
-        public static async Task<bool> PackageExistsInAnotherNuGetProject(NuGetProject nuGetProject, PackageIdentity packageIdentity, ISolutionManager solutionManager,
-            INuGetProjectContext nuGetProjectContext, CancellationToken token)
+        /// <summary>
+        /// Checks if package <paramref name="packageIdentity"/> that is installed in 
+        /// project <paramref name="nugetProject"/> is also installed in any 
+        /// other projects in the solution.
+        /// </summary>
+        public static async Task<bool> PackageExistsInAnotherNuGetProject(NuGetProject nuGetProject, PackageIdentity packageIdentity, ISolutionManager solutionManager, CancellationToken token)
         {
             if(nuGetProject == null)
             {
@@ -1187,18 +1207,21 @@ namespace NuGet.PackageManagement
                 throw new ArgumentNullException("solutionManager");
             }
 
-            bool packageExistsInAnotherNuGetProject = false;
             string nuGetProjectName = NuGetProject.GetUniqueNameOrName(nuGetProject);
             foreach (var otherNuGetProject in solutionManager.GetNuGetProjects())
             {
                 var otherNuGetProjectName = NuGetProject.GetUniqueNameOrName(otherNuGetProject);
                 if (!otherNuGetProjectName.Equals(nuGetProjectName, StringComparison.OrdinalIgnoreCase))
                 {
-                    packageExistsInAnotherNuGetProject = (await otherNuGetProject.GetInstalledPackagesAsync(token)).Where(pr => pr.PackageIdentity.Equals(packageIdentity)).Any();
+                    bool packageExistsInAnotherNuGetProject = (await otherNuGetProject.GetInstalledPackagesAsync(token)).Where(pr => pr.PackageIdentity.Equals(packageIdentity)).Any();
+                    if (packageExistsInAnotherNuGetProject)
+                    {
+                        return true;
+                    }
                 }
             }
 
-            return packageExistsInAnotherNuGetProject;
+            return false;
         }
 
         private async Task<bool> DeletePackage(PackageIdentity packageIdentity, INuGetProjectContext nuGetProjectContext, CancellationToken token)
@@ -1236,22 +1259,30 @@ namespace NuGet.PackageManagement
         private static async Task<NuGetVersion> GetLatestVersionAsync(string packageId, ResolutionContext resolutionContext,
             IEnumerable<SourceRepository> sources, CancellationToken token)
         {
-            List<NuGetVersion> latestVersions = new List<NuGetVersion>();
+            List<Task<NuGetVersion>> tasks = new List<Task<NuGetVersion>>();
+
             foreach (var source in sources)
             {
-                var metadataResource = await source.GetResourceAsync<MetadataResource>(token);
-                if (metadataResource != null)
-                {
-                    var latestVersion = await metadataResource.GetLatestVersion(packageId,
-                        resolutionContext.IncludePrerelease, resolutionContext.IncludeUnlisted, token);
-                    if (latestVersion != null)
-                    {
-                        latestVersions.Add(latestVersion);
-                    }
-                }
+                tasks.Add(Task.Run(async () => await GetLatestVersionCoreAsync(packageId, resolutionContext, source, token)));
             }
 
-            return latestVersions.Max<NuGetVersion>();
+            var versions = await Task.WhenAll(tasks);
+            return versions.Where(v => v != null).Max();
+        }
+
+        private static async Task<NuGetVersion> GetLatestVersionCoreAsync(string packageId, ResolutionContext resolutionContext, SourceRepository source, CancellationToken token)
+        {
+            NuGetVersion latestVersion = null;
+
+            var metadataResource = await source.GetResourceAsync<MetadataResource>();
+
+            if (metadataResource != null)
+            {
+                latestVersion = await metadataResource.GetLatestVersion(packageId,
+                    resolutionContext.IncludePrerelease, resolutionContext.IncludeUnlisted, token);
+            }
+
+            return latestVersion;
         }
 
         private IEnumerable<SourceRepository> GetEffectiveSources(IEnumerable<SourceRepository> primarySources, IEnumerable<SourceRepository> secondarySources)
@@ -1288,21 +1319,6 @@ namespace NuGet.PackageManagement
                     ideExecutionContext.IDEDirectInstall = null;
                 }
             }
-        }
-    }
-
-    /// <summary>
-    /// The event args class used in raising package operation events
-    /// </summary>
-    public  class PackageOperationEventArgs : EventArgs
-    {
-        PackageIdentity PackageIdentity { get; set; }
-        /// <summary>
-        /// Creates a package operation event args object for given <param name="packageIdentity"></param>
-        /// </summary>
-        public PackageOperationEventArgs(PackageIdentity packageIdentity)
-        {
-            PackageIdentity = packageIdentity;
         }
     }
 }

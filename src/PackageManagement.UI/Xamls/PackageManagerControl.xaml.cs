@@ -9,10 +9,11 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Threading;
 using Microsoft.VisualStudio.Shell.Interop;
-using NuGet.Client;
-using NuGet.Client.VisualStudio;
 using NuGet.ProjectManagement;
+using NuGet.Protocol.Core.Types;
+using NuGet.Protocol.VisualStudio;
 using Resx = NuGet.PackageManagement.UI;
+using NuGet.Resolver;
 
 namespace NuGet.PackageManagement.UI
 {
@@ -33,7 +34,6 @@ namespace NuGet.PackageManagement.UI
         // list in response to PackageSourcesChanged event.
         private bool _dontStartNewSearch;
 
-        // TODO: hook this back up
         private PackageRestoreBar _restoreBar;
 
         private IVsWindowSearchHost _windowSearchHost;
@@ -45,12 +45,15 @@ namespace NuGet.PackageManagement.UI
 
         public PackageManagerModel Model { get; private set; }
 
-        public PackageManagerControl(PackageManagerModel model)
-            : this(model, new SimpleSearchBoxFactory())
+        public PackageManagerControl(PackageManagerModel model, NuGet.Configuration.ISettings nugetSettings)
+            : this(model, nugetSettings, new SimpleSearchBoxFactory())
         {
         }
 
-        public PackageManagerControl(PackageManagerModel model, IVsWindowSearchHostFactory searchFactory)
+        public PackageManagerControl(
+            PackageManagerModel model, 
+            NuGet.Configuration.ISettings nugetSettings, 
+            IVsWindowSearchHostFactory searchFactory)
         {
             _uiDispatcher = Dispatcher.CurrentDispatcher;
             Model = model;
@@ -74,10 +77,6 @@ namespace NuGet.PackageManagement.UI
                 _windowSearchHost.IsVisible = true;
             }
 
-            _filter.Items.Add(Resx.Resources.Filter_All);
-            _filter.Items.Add(Resx.Resources.Filter_Installed);
-            _filter.Items.Add(Resx.Resources.Filter_UpgradeAvailable);
-
             AddRestoreBar();
 
             _packageDetail.Control = this;
@@ -86,8 +85,9 @@ namespace NuGet.PackageManagement.UI
             SetTitle();
 
             var settings = LoadSettings();
+            InitializeFilterList(settings);
             InitSourceRepoList(settings);
-            ApplySettings(settings);
+            ApplySettings(settings, nugetSettings);
 
             _initialized = true;
 
@@ -103,6 +103,30 @@ namespace NuGet.PackageManagement.UI
             if (IsUILegalDisclaimerSuppressed())
             {
                 _legalDisclaimer.Visibility = System.Windows.Visibility.Collapsed;
+            }
+        }
+
+        private void InitializeFilterList(UserSettings settings)
+        {
+            _filter.DisplayMemberPath = "Text";
+            var items = new[] {
+                new FilterItem(Filter.All, Resx.Resources.Filter_All),
+                new FilterItem(Filter.Installed, Resx.Resources.Filter_Installed),
+                new FilterItem(Filter.UpdatesAvailable, Resx.Resources.Filter_UpgradeAvailable)
+            };
+            
+            foreach (var item in items)
+            {
+                _filter.Items.Add(item);               
+            }
+
+            if (settings != null)
+            {
+                _filter.SelectedItem = items.First(item => item.Filter == settings.SelectedFilter);
+            }
+            else
+            {
+                _filter.SelectedItem = items[0];
             }
         }
 
@@ -123,23 +147,55 @@ namespace NuGet.PackageManagement.UI
             }
         }
 
-        private void ApplySettings(UserSettings settings)
+        protected DependencyBehavior GetDependencyBehaviorFromConfig(
+            NuGet.Configuration.ISettings nugetSettings)
+        {
+            string dependencySetting = nugetSettings.GetValue("config", "dependencyversion");
+            DependencyBehavior behavior;
+            bool success = Enum.TryParse<DependencyBehavior>(dependencySetting, true, out behavior);
+            if (success)
+            {
+                return behavior;
+            }
+            else
+            {
+                // Default to Lowest
+                return DependencyBehavior.Lowest;
+            }
+        }
+
+        private void SetSelectedDepencyBehavior(DependencyBehavior dependencyBehavior)
+        {
+            var selectedDependencyBehavior = _detailModel.Options.DependencyBehaviors
+                    .FirstOrDefault(d => d.Behavior == dependencyBehavior);
+            if (selectedDependencyBehavior != null)
+            {
+                _detailModel.Options.SelectedDependencyBehavior = selectedDependencyBehavior;
+            }
+        }
+
+        private void ApplySettings(
+            UserSettings settings, 
+            NuGet.Configuration.ISettings nugetSettings)
         {
             if (settings == null)
             {
+                if (nugetSettings == null)
+                {
+                    return;
+                }
+
+                // set depency behavior to the value from nugetSettings
+                SetSelectedDepencyBehavior(GetDependencyBehaviorFromConfig(nugetSettings));
                 return;
             }
 
             _detailModel.Options.ShowPreviewWindow = settings.ShowPreviewWindow;
             _detailModel.Options.RemoveDependencies = settings.RemoveDependencies;
             _detailModel.Options.ForceRemove = settings.ForceRemove;
+            _checkboxPrerelease.IsChecked = settings.IncludePrerelease;
 
-            var selectedDependencyBehavior = _detailModel.Options.DependencyBehaviors
-                .FirstOrDefault(d => d.Behavior == settings.DependencyBehavior);
-            if (selectedDependencyBehavior != null)
-            {
-                _detailModel.Options.SelectedDependencyBehavior = selectedDependencyBehavior;
-            }
+            SetSelectedDepencyBehavior(settings.DependencyBehavior);
 
             var selectedFileConflictAction = _detailModel.Options.FileConflictActions.
                 FirstOrDefault(a => a.Action == settings.FileConflictAction);
@@ -240,6 +296,13 @@ namespace NuGet.PackageManagement.UI
             settings.ForceRemove = _detailModel.Options.ForceRemove;
             settings.DependencyBehavior = _detailModel.Options.SelectedDependencyBehavior.Behavior;
             settings.FileConflictAction = _detailModel.Options.SelectedFileConflictAction.Action;
+            settings.IncludePrerelease = _checkboxPrerelease.IsChecked == true;
+
+            var filterItem = _filter.SelectedItem as FilterItem;
+            if (filterItem != null)
+            {
+                settings.SelectedFilter = filterItem.Filter;
+            }
 
             string key = GetSettingsKey();
             Model.Context.AddSettings(key, settings);
@@ -316,13 +379,13 @@ namespace NuGet.PackageManagement.UI
             }
         }
 
-        private async void packageRestoreManager_PackagesMissingStatusChanged(object sender, PackagesMissingStatusEventArgs e)
+        private void packageRestoreManager_PackagesMissingStatusChanged(object sender, PackagesMissingStatusEventArgs e)
         {
             // TODO: PackageRestoreManager fires this event even when solution is closed.
             // Don't do anything if solution is closed.
             if (!e.PackagesMissing)
             {
-                await UpdateAfterPackagesMissingStatusChanged();
+                UpdateAfterPackagesMissingStatusChanged();
             }
         }
 
@@ -330,19 +393,19 @@ namespace NuGet.PackageManagement.UI
         // Note that the PackagesMissingStatusChanged event can be fired from a non-UI thread in one case:
         // the VsSolutionManager.Init() method, which is scheduled on the thread pool. So this
         // method needs to use _uiDispatcher.
-        private async Task UpdateAfterPackagesMissingStatusChanged()
+        private void UpdateAfterPackagesMissingStatusChanged()
         {
             if (!_uiDispatcher.CheckAccess())
             {
-                await _uiDispatcher.Invoke(async () =>
+                _uiDispatcher.Invoke(() =>
                 {
-                    await this.UpdateAfterPackagesMissingStatusChanged();
+                    this.UpdateAfterPackagesMissingStatusChanged();
                 });
 
                 return;
             }
 
-            await UpdatePackageStatus();
+            UpdatePackageStatus();
             _packageDetail.Refresh();
         }
 
@@ -416,7 +479,8 @@ namespace NuGet.PackageManagement.UI
         {
             get
             {
-                return Resx.Resources.Filter_Installed.Equals(_filter.SelectedItem);
+                var filterItem = _filter.SelectedItem as FilterItem;
+                return filterItem != null && filterItem.Filter == Filter.Installed;
             }
         }
 
@@ -424,7 +488,8 @@ namespace NuGet.PackageManagement.UI
         {
             get
             {
-                return Resx.Resources.Filter_UpgradeAvailable.Equals(_filter.SelectedItem);
+                var filterItem = _filter.SelectedItem as FilterItem;
+                return filterItem != null && filterItem.Filter == Filter.UpdatesAvailable;
             }
         }
 
@@ -442,19 +507,14 @@ namespace NuGet.PackageManagement.UI
             {
                 return _activeSource;
             }
-        }
+        }        
 
-        private void SearchPackageInActivePackageSource(string searchText)
+        private async void SearchPackageInActivePackageSource(string searchText)
         {
-            Filter filter = Filter.All;
-            if (Resx.Resources.Filter_Installed.Equals(_filter.SelectedItem))
-            {
-                filter = Filter.Installed;
-            }
-            else if (Resx.Resources.Filter_UpgradeAvailable.Equals(_filter.SelectedItem))
-            {
-                filter = Filter.UpdatesAvailable;
-            }
+            var filterItem = _filter.SelectedItem as FilterItem;
+            Filter filter = filterItem != null ?
+                filterItem.Filter :
+                Filter.All;
 
             PackageLoaderOption option = new PackageLoaderOption(filter, IncludePrerelease);
             var loader = new PackageLoader(
@@ -463,7 +523,8 @@ namespace NuGet.PackageManagement.UI
                 Model.Context.Projects,
                 _activeSource,
                 searchText);
-            _packageList.Loader = loader;
+            await loader.Initialize();
+            _packageList.Load(loader);
         }
 
         private void SettingsButtonClick(object sender, RoutedEventArgs e)
@@ -546,12 +607,12 @@ namespace NuGet.PackageManagement.UI
             }
         }
 
-        internal async Task UpdatePackageStatus()
+        internal void UpdatePackageStatus()
         {
             if (ShowInstalled || ShowUpdatesAvailable)
             {
                 // refresh the whole package list
-                await _packageList.Reload();
+                SearchPackageInActivePackageSource(_windowSearchHost.SearchQuery.SearchString);
             }
             else
             {

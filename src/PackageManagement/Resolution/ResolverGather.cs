@@ -1,6 +1,5 @@
-﻿using NuGet.Client;
-using NuGet.Frameworks;
-using NuGet.PackagingCore;
+﻿using NuGet.Frameworks;
+using NuGet.Packaging.Core;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -8,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using NuGet.Protocol.Core.Types;
 
 namespace NuGet.PackageManagement
 {
@@ -80,12 +80,40 @@ namespace NuGet.PackageManagement
             var combinedResults = new HashSet<SourceDependencyInfo>(PackageIdentity.Comparer);
 
             // get the dependency info resources for each repo
-            // a resource may be null, if it is exclude this source from the gather
-            List<Tuple<SourceRepository, DepedencyInfoResource>> primaryDependencyResources =
-                primarySources.Select(s => new Tuple<SourceRepository, DepedencyInfoResource>(s, s.GetResource<DepedencyInfoResource>())).Where(t => t.Item2 != null).ToList();
+            // primary and all may share the same resources
+            var depResources = new Dictionary<SourceRepository, Task<DepedencyInfoResource>>();
+            foreach (var source in allSources.Concat(primarySources))
+            {
+                if (!depResources.ContainsKey(source))
+                {
+                    depResources.Add(source, source.GetResourceAsync<DepedencyInfoResource>(token));
+                }
+            }
 
-            List<Tuple<SourceRepository, DepedencyInfoResource>> allDependencyResources =
-                allSources.Select(s => new Tuple<SourceRepository, DepedencyInfoResource>(s, s.GetResource<DepedencyInfoResource>())).Where(t => t.Item2 != null).ToList();
+            // a resource may be null, if it is exclude this source from the gather
+            var primaryDependencyResources = new List<Tuple<SourceRepository, DepedencyInfoResource>>();
+
+            foreach (var source in primarySources)
+            {
+                var resource = await depResources[source];
+
+                if (source != null)
+                {
+                    primaryDependencyResources.Add(new Tuple<SourceRepository, DepedencyInfoResource>(source, resource));
+                }
+            }
+
+            var allDependencyResources = new List<Tuple<SourceRepository, DepedencyInfoResource>>();
+
+            foreach (var source in allSources)
+            {
+                var resource = await depResources[source];
+
+                if (source != null)
+                {
+                    allDependencyResources.Add(new Tuple<SourceRepository, DepedencyInfoResource>(source, resource));
+                }
+            }
 
             // track which sources have been searched for each package id
             Dictionary<SourceRepository, HashSet<string>> sourceToPackageIdsChecked = new Dictionary<SourceRepository, HashSet<string>>();
@@ -98,7 +126,7 @@ namespace NuGet.PackageManagement
                 // First, check for primary targets alone against primary source repositories alone
                 var primaryIdsAsAllDiscoveredIds = new HashSet<string>(primaryTargetIds);
                 await ProcessMissingPackageIds(combinedResults, primaryIdsAsAllDiscoveredIds, sourceToPackageIdsChecked,
-                    primaryDependencyResources, targetFramework, context, token);
+                    primaryDependencyResources, targetFramework, context, false, token);
 
                 string missingPrimaryPackageId = primaryTargetIds.Where(p => !combinedResults.Any(c => c.Id.Equals(p, StringComparison.OrdinalIgnoreCase))).FirstOrDefault();
                 if (!String.IsNullOrEmpty(missingPrimaryPackageId))
@@ -108,7 +136,7 @@ namespace NuGet.PackageManagement
 
                 var allIdsAsAllDiscoveredIds = new HashSet<string>(allTargetIds);
                 await ProcessMissingPackageIds(combinedResults, allIdsAsAllDiscoveredIds, sourceToPackageIdsChecked,
-                    primaryDependencyResources, targetFramework, context, token);
+                    primaryDependencyResources, targetFramework, context, false, token);
             }
             else
             {
@@ -116,7 +144,7 @@ namespace NuGet.PackageManagement
 
                 // First, check for primary targets alone against primary source repositories alone
                 await ProcessMissingPackageIdentities(combinedResults, primaryTargets, sourceToPackageIdsChecked,
-                    primaryDependencyResources, targetFramework, context, token);
+                    primaryDependencyResources, targetFramework, context, false, token);
 
                 PackageIdentity missingPrimaryPackageIdentity = primaryTargets.Where(p => !combinedResults.Any(c => c.Equals(p))).FirstOrDefault();
                 if (missingPrimaryPackageIdentity != null)
@@ -125,7 +153,7 @@ namespace NuGet.PackageManagement
                 }
 
                 await ProcessMissingPackageIdentities(combinedResults, allTargets, sourceToPackageIdsChecked,
-                    allDependencyResources, targetFramework, context, token);
+                    allDependencyResources, targetFramework, context, true, token);
             }
 
             // loop until we finish a full iteration with no new ids discovered
@@ -134,7 +162,7 @@ namespace NuGet.PackageManagement
             while (!complete)
             {
                 HashSet<string> allDiscoveredIds = new HashSet<string>(sourceToPackageIdsChecked.SelectMany(e => e.Value), StringComparer.OrdinalIgnoreCase);
-                complete = await ProcessMissingPackageIds(combinedResults, allDiscoveredIds, sourceToPackageIdsChecked, allDependencyResources, targetFramework, context, token);
+                complete = await ProcessMissingPackageIds(combinedResults, allDiscoveredIds, sourceToPackageIdsChecked, allDependencyResources, targetFramework, context, true, token);
             }
 
             return combinedResults;
@@ -146,8 +174,12 @@ namespace NuGet.PackageManagement
             List<Tuple<SourceRepository, DepedencyInfoResource>> dependencyResources,
             NuGetFramework targetFramework,
             ResolutionContext context,
+            bool ignoreExceptions,
             CancellationToken token)
         {
+            // results need to be kept in order
+            var results = new Queue<Tuple<SourceRepository, Task<IEnumerable<PackageDependencyInfo>>>>();
+
             // search against the target package
             foreach (Tuple<SourceRepository, DepedencyInfoResource> resourceTuple in dependencyResources)
             {
@@ -167,10 +199,39 @@ namespace NuGet.PackageManagement
                 {
                     // add the target id incase it isn't found at all, this records that we tried already
                     foundIds.UnionWith(missingTargets.Select(e => e.Id));
+
                     // get package info from the source for the missing targets alone
-                    IEnumerable<PackageDependencyInfo> packages;
-                    packages = await resourceTuple.Item2.ResolvePackages(missingTargets, targetFramework, context.IncludePrerelease);
-                    ProcessResults(combinedResults, resourceTuple.Item1, foundIds, packages);
+                    // search on another thread, we'll retrieve the results later
+                    var task = Task.Run(async () => await resourceTuple.Item2.ResolvePackages(missingTargets, targetFramework, context.IncludePrerelease, token));
+
+                    var data = new Tuple<SourceRepository, Task<IEnumerable<PackageDependencyInfo>>>(resourceTuple.Item1, task);
+
+                    results.Enqueue(data);
+                }
+            }
+
+            // retrieve package results from the gather tasks
+            // order is important here. packages from the first repository beat packages from later repositories
+            while (results.Count > 0)
+            {
+                var data = results.Dequeue();
+                var source = data.Item1;
+
+                var task = data.Item2;
+
+                try
+                {
+                    var packages = await task;
+
+                    ProcessResults(combinedResults, source, sourceToPackageIdsChecked[source], packages, context.IncludePrerelease);
+                }
+                catch (Exception ex)
+                {
+                    // swallow exceptions for secondary repositories
+                    if (!ignoreExceptions)
+                    {
+                        throw;
+                    }
                 }
             }
         }
@@ -184,9 +245,13 @@ namespace NuGet.PackageManagement
             List<Tuple<SourceRepository, DepedencyInfoResource>> dependencyResources,
             NuGetFramework targetFramework,
             ResolutionContext context,
+            bool ignoreExceptions,
             CancellationToken token)
         {
             bool complete = true;
+
+            // results need to be kept in order
+            var results = new Queue<Tuple<SourceRepository, Task<IEnumerable<PackageDependencyInfo>>>>();
 
             // resolve further on each source
             foreach (SourceRepository source in sourceToPackageIdsChecked.Keys)
@@ -199,11 +264,8 @@ namespace NuGet.PackageManagement
 
                 DepedencyInfoResource resolverRes = resolverResTuple.Item2;
 
-                // list of ids this source has been checked for
-                HashSet<string> foundIds = sourceToPackageIdsChecked[source];
-
                 // check each source for packages discovered on other sources if we have no checked here already
-                foreach (string missingId in allDiscoveredIds.Except(foundIds, StringComparer.OrdinalIgnoreCase).ToArray())
+                foreach (string missingId in allDiscoveredIds.Except(sourceToPackageIdsChecked[source], StringComparer.OrdinalIgnoreCase).ToArray())
                 {
                     token.ThrowIfCancellationRequested();
 
@@ -211,12 +273,39 @@ namespace NuGet.PackageManagement
                     complete = false;
 
                     // mark that we searched for this id here
-                    foundIds.Add(missingId);
+                    sourceToPackageIdsChecked[source].Add(missingId);
 
-                    // search
-                    var packages = await resolverRes.ResolvePackages(missingId, targetFramework, context.IncludePrerelease, token);
+                    // search on another thread, we'll retrieve the results later
+                    var task = Task.Run(async () => await resolverRes.ResolvePackages(missingId, targetFramework, context.IncludePrerelease, token));
 
-                    ProcessResults(combinedResults, source, foundIds, packages);
+                    var data = new Tuple<SourceRepository, Task<IEnumerable<PackageDependencyInfo>>>(source, task);
+
+                    results.Enqueue(data);
+                }
+            }
+
+            // retrieve package results from the gather tasks
+            // order is important here. packages from the first repository beat packages from later repositories
+            while (results.Count > 0)
+            {
+                var data = results.Dequeue();
+                var source = data.Item1;
+
+                var task = data.Item2;
+
+                try
+                {
+                    var packages = await task;
+
+                    ProcessResults(combinedResults, source, sourceToPackageIdsChecked[source], packages, context.IncludePrerelease);
+                }
+                catch (Exception ex)
+                {
+                    // swallow exceptions for secondary repositories
+                    if (!ignoreExceptions)
+                    {
+                        throw;
+                    }
                 }
             }
 
@@ -227,20 +316,38 @@ namespace NuGet.PackageManagement
         /// Helper that combines the results into the hashsets, which are passed by reference.
         /// ***NOTE: Parameters combinedResults and foundIds may get updated before the return of this call
         /// </summary>
-        private static void ProcessResults(HashSet<SourceDependencyInfo> combinedResults, SourceRepository source, HashSet<string> foundIds, IEnumerable<PackageDependencyInfo> packages)
+        private static void ProcessResults(HashSet<SourceDependencyInfo> combinedResults, SourceRepository source, HashSet<string> foundIds,
+            IEnumerable<PackageDependencyInfo> packages, bool includePrerelease)
         {
-            foreach (var package in packages)
+            if (packages != null)
             {
-                SourceDependencyInfo depInfo = new SourceDependencyInfo(package, source);
+                foreach (var package in packages)
+                {
+                    // Set the includePrerelease on the version range on every single package dependency to context.IncludePreerelease
+                    var packageDependencies = package.Dependencies;
+                    var modifiedPackageDependencies = new List<PackageDependency>();
+                    foreach (var packageDependency in packageDependencies)
+                    {
+                        var versionRange = packageDependency.VersionRange;
+                        var modifiedVersionRange = new Versioning.VersionRange(versionRange.MinVersion, versionRange.IsMinInclusive, versionRange.MaxVersion,
+                            versionRange.IsMaxInclusive, includePrerelease, versionRange.Float);
 
-                // add this to the final results
-                combinedResults.Add(depInfo);
+                        var modifiedPackageDependency = new PackageDependency(packageDependency.Id, modifiedVersionRange);
+                        modifiedPackageDependencies.Add(modifiedPackageDependency);
+                    }
 
-                // mark that we found this id
-                foundIds.Add(depInfo.Id);
+                    var modifiedPackageDependencyInfo = new PackageDependencyInfo(new PackageIdentity(package.Id, package.Version), modifiedPackageDependencies);
+                    SourceDependencyInfo depInfo = new SourceDependencyInfo(modifiedPackageDependencyInfo, source);
 
-                // mark that all dependant ids were also checked by the metadata client
-                foundIds.UnionWith(depInfo.Dependencies.Select(p => p.Id));
+                    // add this to the final results
+                    combinedResults.Add(depInfo);
+
+                    // mark that we found this id
+                    foundIds.Add(depInfo.Id);
+
+                    // mark that all dependant ids were also checked by the metadata client
+                    foundIds.UnionWith(depInfo.Dependencies.Select(p => p.Id));
+                }
             }
         }
 
