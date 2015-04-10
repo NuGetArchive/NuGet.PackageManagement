@@ -805,6 +805,7 @@ namespace NuGet.PackageManagement.UI
         public void CleanUp()
         {
             _windowSearchHost.TerminateSearch();
+            Model.Context.SourceProvider.PackageSourceProvider.PackageSourcesSaved -= Sources_PackageSourcesChanged;
             RemoveRestoreBar();
         }
 
