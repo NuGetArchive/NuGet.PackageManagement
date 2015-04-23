@@ -1054,6 +1054,16 @@ namespace NuGet.PackageManagement
             {
                 throw executeNuGetProjectActionsException;
             }
+
+            // Build integrated projects should run a restore to update the lock file after an install
+            var buildIntegratedProject = nuGetProject as BuildIntegratedNuGetProject;
+
+            if (buildIntegratedProject != null)
+            {
+                // TODO: should this write the output somewhere else?
+                await BuildIntegratedRestoreUtility.Restore(buildIntegratedProject.JsonConfigPath,
+                    nuGetProjectContext, token);
+            }
         }
 
         private async Task Rollback(NuGetProject nuGetProject, Stack<NuGetProjectAction> executedNuGetProjectActions, HashSet<PackageIdentity> packageWithDirectoriesToBeDeleted,

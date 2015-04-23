@@ -19,16 +19,16 @@ namespace NuGet.ProjectManagement.Projects
     /// </summary>
     public class BuildIntegratedNuGetProject : NuGetProject, INuGetIntegratedProject
     {
-        private readonly FileInfo _projectJson;
+        private readonly FileInfo _jsonConfig;
 
-        public BuildIntegratedNuGetProject(FileInfo projectJson)
+        public BuildIntegratedNuGetProject(FileInfo jsonConfig)
         {
-            if (projectJson == null)
+            if (jsonConfig == null)
             {
-                throw new ArgumentNullException(nameof(projectJson));
+                throw new ArgumentNullException(nameof(jsonConfig));
             }
 
-            _projectJson = projectJson;
+            _jsonConfig = jsonConfig;
         }
 
         public override async Task<IEnumerable<PackageReference>> GetInstalledPackagesAsync(CancellationToken token)
@@ -73,9 +73,20 @@ namespace NuGet.ProjectManagement.Projects
             return true;
         }
 
+        /// <summary>
+        /// nuget.json path
+        /// </summary>
+        public string JsonConfigPath
+        {
+            get
+            {
+                return _jsonConfig.FullName;
+            }
+        }
+
         private async Task<JObject> GetJson()
         {
-            using (var streamReader = new StreamReader(_projectJson.OpenRead()))
+            using (var streamReader = new StreamReader(_jsonConfig.OpenRead()))
             {
                 return JObject.Parse(streamReader.ReadToEnd());
             }
@@ -83,7 +94,7 @@ namespace NuGet.ProjectManagement.Projects
 
         private async Task SaveJson(JObject json)
         {
-            using (var writer = new StreamWriter(_projectJson.FullName, false, Encoding.UTF8))
+            using (var writer = new StreamWriter(_jsonConfig.FullName, false, Encoding.UTF8))
             {
                 writer.Write(json.ToString());
             }

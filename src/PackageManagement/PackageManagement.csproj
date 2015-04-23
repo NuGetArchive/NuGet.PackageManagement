@@ -82,6 +82,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BuildIntegration\BuildIntegratedRestoreUtility.cs" />
     <Compile Include="Context\IDEExecutionContext.cs" />
     <Compile Include="Context\UninstallationContext.cs" />
     <Compile Include="IDE\ICommonOperations.cs" />
