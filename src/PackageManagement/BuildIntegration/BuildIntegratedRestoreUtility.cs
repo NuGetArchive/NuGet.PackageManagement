@@ -1,22 +1,34 @@
-﻿using NuGet.ProjectManagement;
+﻿using NuGet.Packaging.Core;
+using NuGet.ProjectManagement;
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace NuGet.PackageManagement
 {
+    /// <summary>
+    /// Helper class for calling DNU restore
+    /// </summary>
     public static class BuildIntegratedRestoreUtility
     {
         private static readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
 
-        public static async Task Restore(string jsonConfigPath, INuGetProjectContext projectContext, CancellationToken token)
+        public static async Task Restore(string jsonConfigPath,
+            INuGetProjectContext projectContext,
+            CancellationToken token)
+        {
+            await Restore(jsonConfigPath, projectContext, Enumerable.Empty<string>(), token);
+        }
+
+        public static async Task Restore(string jsonConfigPath, 
+            INuGetProjectContext projectContext,
+            IEnumerable<string> additionalSources, 
+            CancellationToken token)
         {
             // Limit to only 1 restore at a time
             await _semaphore.WaitAsync(token);
@@ -25,7 +37,7 @@ namespace NuGet.PackageManagement
             {
                 token.ThrowIfCancellationRequested();
 
-                await RestoreCore(jsonConfigPath, projectContext, token);
+                await RestoreCore(jsonConfigPath, projectContext, additionalSources, token);
             }
             finally
             {
@@ -33,12 +45,11 @@ namespace NuGet.PackageManagement
             }
         }
 
-        private static async Task RestoreCore(string jsonConfigPath, INuGetProjectContext projectContext, CancellationToken token)
+        private static async Task RestoreCore(string jsonConfigPath, INuGetProjectContext projectContext, IEnumerable<string> sources, CancellationToken token)
         {
             FileInfo file = new FileInfo(jsonConfigPath);
 
             // Call DNU to restore
-            Task dnuTask = null;
             string dnuPath = Environment.GetEnvironmentVariable("DNU_CMD_PATH");
 
             if (String.IsNullOrEmpty(dnuPath) || !dnuPath.EndsWith("dnu.cmd"))
@@ -49,12 +60,20 @@ namespace NuGet.PackageManagement
             {
                 ProcessStartInfo startInfo = new ProcessStartInfo();
                 startInfo.FileName = dnuPath;
-                startInfo.Arguments = "restore";
+                startInfo.Arguments = "restore --ignore-failed-sources";
                 startInfo.CreateNoWindow = true;
                 startInfo.WorkingDirectory = file.Directory.FullName;
                 startInfo.UseShellExecute = false;
                 startInfo.RedirectStandardError = true;
                 startInfo.RedirectStandardOutput = true;
+
+                if (sources != null && sources.Any())
+                {
+                    foreach (var source in sources)
+                    {
+                        startInfo.Arguments += String.Format(CultureInfo.InvariantCulture, " -f {0}", source);
+                    }
+                }
 
                 var process = new Process();
                 process.StartInfo = startInfo;
@@ -85,6 +104,25 @@ namespace NuGet.PackageManagement
                         projectContext.ReportError(Strings.BuildIntegratedPackageRestoreFailed);
                     }
                 });
+            }
+        }
+
+        public static string GetNupkgPathFromGlobalSource(PackageIdentity identity)
+        {
+            string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+
+            string nupkgName = identity.Id + "." + identity.Version.ToNormalizedString() + ".nupkg";
+
+            return Path.Combine(GlobalPackagesFolder, identity.Id, identity.Version.ToNormalizedString(), nupkgName);
+        }
+
+        public static string GlobalPackagesFolder
+        {
+            get
+            {
+                string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+
+                return Path.Combine(userProfile, ".dnx\\packages\\");
             }
         }
     }

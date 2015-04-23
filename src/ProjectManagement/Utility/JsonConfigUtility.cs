@@ -5,13 +5,14 @@ using System.Linq;
 using Newtonsoft.Json.Linq;
 using NuGet.Packaging.Core;
 using NuGet.Versioning;
+using NuGet.Frameworks;
 
 namespace NuGet.ProjectManagement
 {
     /// <summary>
     /// project.json utils
     /// </summary>
-    public static class ProjectJsonUtility
+    public static class JsonConfigUtility
     {
         /// <summary>
         /// Read dependencies from a project.json file
@@ -96,6 +97,30 @@ namespace NuGet.ProjectManagement
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Retrieve the NuGetFrameworks under frameworks
+        /// </summary>
+        public static IEnumerable<NuGetFramework> GetFrameworks(JObject json)
+        {
+            List<NuGetFramework> results = new List<NuGetFramework>();
+
+            JToken node = null;
+            if (json.TryGetValue("frameworks", out node))
+            {
+                foreach (var frameworkNode in node.ToArray())
+                {
+                    var frameworkProperty = frameworkNode as JProperty;
+
+                    if (frameworkProperty != null)
+                    {
+                        results.Add(NuGetFramework.Parse(frameworkProperty.Name));
+                    }
+                }
+            }
+
+            return results;
         }
     }
 }

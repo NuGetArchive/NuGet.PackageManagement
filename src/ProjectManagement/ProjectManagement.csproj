@@ -108,7 +108,7 @@
     <Compile Include="Utility\MSBuildNuGetProjectSystemUtility.cs" />
     <Compile Include="Utility\PathUtility.cs" />
     <Compile Include="SourceControl\SourceControlUtility.cs" />
-    <Compile Include="Utility\ProjectJsonUtility.cs" />
+    <Compile Include="Utility\JsonConfigUtility.cs" />
     <Compile Include="Utility\StreamUtility.cs" />
     <Compile Include="Utility\Token.cs" />
     <Compile Include="Utility\Tokenizer.cs" />

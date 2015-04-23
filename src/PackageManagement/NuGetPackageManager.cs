@@ -16,6 +16,8 @@ using NuGet.ProjectManagement.Projects;
 using NuGet.Protocol.Core.Types;
 using NuGet.Resolver;
 using NuGet.Versioning;
+using System.IO.Compression;
+using System.Xml.Linq;
 
 namespace NuGet.PackageManagement
 {
@@ -1000,69 +1002,144 @@ namespace NuGet.PackageManagement
                 throw new ArgumentNullException("nuGetProjectContext");
             }
 
-            Exception executeNuGetProjectActionsException = null;
-            Stack<NuGetProjectAction> executedNuGetProjectActions = new Stack<NuGetProjectAction>();
-            HashSet<PackageIdentity> packageWithDirectoriesToBeDeleted = new HashSet<PackageIdentity>(PackageIdentity.Comparer);
-            try
-            {
-                await nuGetProject.PreProcessAsync(nuGetProjectContext, token);
-                foreach (NuGetProjectAction nuGetProjectAction in nuGetProjectActions)
-                {
-                    executedNuGetProjectActions.Push(nuGetProjectAction);
-                    if (nuGetProjectAction.NuGetProjectActionType == NuGetProjectActionType.Uninstall)
-                    {
-                        await ExecuteUninstallAsync(nuGetProject, nuGetProjectAction.PackageIdentity, packageWithDirectoriesToBeDeleted, nuGetProjectContext, token);
-                    }
-                    else
-                    {
-                        using (var targetPackageStream = new MemoryStream())
-                        {
-                            await PackageDownloader.GetPackageStreamAsync(nuGetProjectAction.SourceRepository, nuGetProjectAction.PackageIdentity, targetPackageStream, token);
-                            await ExecuteInstallAsync(nuGetProject, nuGetProjectAction.PackageIdentity, targetPackageStream, packageWithDirectoriesToBeDeleted, nuGetProjectContext, token);
-                        }
-                    }
-
-                    string toFromString = nuGetProjectAction.NuGetProjectActionType == NuGetProjectActionType.Install ? Strings.To : Strings.From;
-                    nuGetProjectContext.Log(MessageLevel.Info, Strings.SuccessfullyExecutedPackageAction,
-                        nuGetProjectAction.NuGetProjectActionType.ToString().ToLowerInvariant(), nuGetProjectAction.PackageIdentity.ToString(), toFromString + " " + nuGetProject.GetMetadata<string>(NuGetProjectMetadataKeys.Name));
-                }
-                await nuGetProject.PostProcessAsync(nuGetProjectContext, token);
-
-                await OpenReadmeFile(nuGetProjectContext, token);
-            }
-            catch (Exception ex)
-            {
-                executeNuGetProjectActionsException = ex;
-            }
-
-            if(executeNuGetProjectActionsException != null)
-            {
-                await Rollback(nuGetProject, executedNuGetProjectActions, packageWithDirectoriesToBeDeleted, nuGetProjectContext, token);
-            }
-
-            // Delete the package directories as the last step, so that, if an uninstall had to be rolled back, we can just use the package file on the directory
-            // Also, always perform deletion of package directories, even in a rollback, so that there are no stale package directories
-            foreach(var packageWithDirectoryToBeDeleted in packageWithDirectoriesToBeDeleted)
-            {
-                await DeletePackage(packageWithDirectoryToBeDeleted, nuGetProjectContext, token);
-            }
-
-            // Clear direct install
-            SetDirectInstall(null, nuGetProjectContext);
-
-            if(executeNuGetProjectActionsException != null)
-            {
-                throw executeNuGetProjectActionsException;
-            }
-
-            // Build integrated projects should run a restore to update the lock file after an install
+            // DNU: Find the closure before executing the actions
             var buildIntegratedProject = nuGetProject as BuildIntegratedNuGetProject;
-
             if (buildIntegratedProject != null)
             {
-                // TODO: should this write the output somewhere else?
-                await BuildIntegratedRestoreUtility.Restore(buildIntegratedProject.JsonConfigPath,
-                    nuGetProjectContext, token);
+                await ExecuteBuildIntegratedProjectActionsAsync(buildIntegratedProject,
+                    nuGetProjectActions,
+                    nuGetProjectContext,
+                    token);
+            }
+            else
+            {
+                Exception executeNuGetProjectActionsException = null;
+                Stack<NuGetProjectAction> executedNuGetProjectActions = new Stack<NuGetProjectAction>();
+                HashSet<PackageIdentity> packageWithDirectoriesToBeDeleted = new HashSet<PackageIdentity>(PackageIdentity.Comparer);
+                try
+                {
+                    await nuGetProject.PreProcessAsync(nuGetProjectContext, token);
+                    foreach (NuGetProjectAction nuGetProjectAction in nuGetProjectActions)
+                    {
+                        executedNuGetProjectActions.Push(nuGetProjectAction);
+                        if (nuGetProjectAction.NuGetProjectActionType == NuGetProjectActionType.Uninstall)
+                        {
+                            await ExecuteUninstallAsync(nuGetProject, nuGetProjectAction.PackageIdentity, packageWithDirectoriesToBeDeleted, nuGetProjectContext, token);
+                        }
+                        else
+                        {
+                            using (var targetPackageStream = new MemoryStream())
+                            {
+                                await PackageDownloader.GetPackageStreamAsync(nuGetProjectAction.SourceRepository, nuGetProjectAction.PackageIdentity, targetPackageStream, token);
+                                await ExecuteInstallAsync(nuGetProject, nuGetProjectAction.PackageIdentity, targetPackageStream, packageWithDirectoriesToBeDeleted, nuGetProjectContext, token);
+                            }
+                        }
+
+                        string toFromString = nuGetProjectAction.NuGetProjectActionType == NuGetProjectActionType.Install ? Strings.To : Strings.From;
+                        nuGetProjectContext.Log(MessageLevel.Info, Strings.SuccessfullyExecutedPackageAction,
+                            nuGetProjectAction.NuGetProjectActionType.ToString().ToLowerInvariant(), nuGetProjectAction.PackageIdentity.ToString(), toFromString + " " + nuGetProject.GetMetadata<string>(NuGetProjectMetadataKeys.Name));
+                    }
+                    await nuGetProject.PostProcessAsync(nuGetProjectContext, token);
+
+                    await OpenReadmeFile(nuGetProjectContext, token);
+                }
+                catch (Exception ex)
+                {
+                    executeNuGetProjectActionsException = ex;
+                }
+
+                if (executeNuGetProjectActionsException != null)
+                {
+                    await Rollback(nuGetProject, executedNuGetProjectActions, packageWithDirectoriesToBeDeleted, nuGetProjectContext, token);
+                }
+
+                // Delete the package directories as the last step, so that, if an uninstall had to be rolled back, we can just use the package file on the directory
+                // Also, always perform deletion of package directories, even in a rollback, so that there are no stale package directories
+                foreach (var packageWithDirectoryToBeDeleted in packageWithDirectoriesToBeDeleted)
+                {
+                    await DeletePackage(packageWithDirectoryToBeDeleted, nuGetProjectContext, token);
+                }
+
+                // Clear direct install
+                SetDirectInstall(null, nuGetProjectContext);
+
+                if (executeNuGetProjectActionsException != null)
+                {
+                    throw executeNuGetProjectActionsException;
+                }
+            }
+        }
+
+        public async Task ExecuteBuildIntegratedProjectActionsAsync(BuildIntegratedNuGetProject buildIntegratedProject, IEnumerable<NuGetProjectAction> nuGetProjectActions,
+           INuGetProjectContext nuGetProjectContext, CancellationToken token)
+        {
+            // Restore before performing the actions, we will need the previous packages for uninstalls
+            await BuildIntegratedRestoreUtility.Restore(buildIntegratedProject.JsonConfigPath,
+                nuGetProjectContext, token);
+
+            // Retrieve the list of currently installed packages
+            // TOOD: get the full closure
+            var previousPackages = new HashSet<PackageIdentity>(
+                (await buildIntegratedProject.GetInstalledPackagesAsync(token)).Select(reference => reference.PackageIdentity),
+                PackageIdentity.Comparer);
+
+            // Run package actions
+            foreach (var action in nuGetProjectActions)
+            {
+                if (action.NuGetProjectActionType == NuGetProjectActionType.Install)
+                {
+                    var dependency = new PackageDependency(action.PackageIdentity.Id, new VersionRange(action.PackageIdentity.Version));
+
+                    await buildIntegratedProject.AddDependency(dependency, nuGetProjectContext, token);
+                }
+                else if (action.NuGetProjectActionType == NuGetProjectActionType.Uninstall)
+                {
+                    await buildIntegratedProject.RemoveDependency(action.PackageIdentity.Id, nuGetProjectContext, token);
+                }
+            }
+
+            // Restore and update the lock file after the updates
+            var additionalSources = new HashSet<string>(
+                    nuGetProjectActions.Where(action => action.SourceRepository != null)
+                    .Select(action => action.SourceRepository.PackageSource.Source),
+                    StringComparer.OrdinalIgnoreCase);
+
+            await BuildIntegratedRestoreUtility.Restore(buildIntegratedProject.JsonConfigPath,
+                nuGetProjectContext, additionalSources, token);
+
+            // Find all new packages and check if they have content or scripts
+            var afterInstallPackages = new HashSet<PackageIdentity>(
+                (await buildIntegratedProject.GetInstalledPackagesAsync(token)).Select(reference => reference.PackageIdentity),
+                PackageIdentity.Comparer);
+
+            var installed = afterInstallPackages.Except(previousPackages);
+            var uninstalled = previousPackages.Except(afterInstallPackages);
+
+            // Install packages
+            foreach (var installedPackage in installed)
+            {
+                var nupkgPath = BuildIntegratedRestoreUtility.GetNupkgPathFromGlobalSource(installedPackage);
+
+                var stream = File.OpenRead(nupkgPath);
+
+                await buildIntegratedProject.InstallPackageContentAsync(installedPackage, stream, nuGetProjectContext, token);
+            }
+
+            // Uninstall packages
+            foreach (var uninstalledPackage in uninstalled)
+            {
+                var nupkgPath = BuildIntegratedRestoreUtility.GetNupkgPathFromGlobalSource(uninstalledPackage);
+
+                if (File.Exists(nupkgPath))
+                {
+                    var stream = File.OpenRead(nupkgPath);
+
+                    await buildIntegratedProject.UninstallPackageContentAsync(uninstalledPackage, stream, nuGetProjectContext, token);
+                }
+                else
+                {
+                    Debug.Fail("Unable to find nupkg to uninstall content.");
+                }
             }
         }
 
