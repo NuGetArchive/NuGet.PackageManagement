@@ -22,14 +22,14 @@ namespace ProjectManagement.Test
         public async Task TestFolderNuGetProjectInstall()
         {
             // Arrange
-            var packageIdentity = new PackageIdentity("packageA", new NuGetVersion("1.0.0"));
+            var packageIdentity = new PackageIdentity("packageA", new NuGetVersion("1.0.01"));
             var randomTestSourcePath = TestFilesystemUtility.CreateRandomTestFolder();
-            var packageFileInfo = TestPackages.GetLegacyTestPackage(randomTestSourcePath, packageIdentity.Id, packageIdentity.Version.ToNormalizedString());
+            var packageFileInfo = TestPackages.GetLegacyTestPackage(randomTestSourcePath, packageIdentity.Id, packageIdentity.Version.ToString());
             var randomTestDestinationPath = TestFilesystemUtility.CreateRandomTestFolder();
             var folderNuGetProject = new FolderNuGetProject(randomTestDestinationPath);
             var packagePathResolver = new PackagePathResolver(randomTestDestinationPath);
             var packageInstallPath = packagePathResolver.GetInstallPath(packageIdentity);
-            var nupkgFilePath = Path.Combine(packageInstallPath, packagePathResolver.GetPackageFileName(packageIdentity));
+            var nupkgFilePath = Path.Combine(packageInstallPath, packageIdentity.Id + "." + packageIdentity.Version.ToString() + ".nupkg");
             var testNuGetProjectContext = new TestNuGetProjectContext();
             var token = CancellationToken.None;
             using (var packageStream = GetDownloadResourceResult(packageFileInfo))

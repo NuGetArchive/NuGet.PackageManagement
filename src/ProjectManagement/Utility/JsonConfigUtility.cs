@@ -103,7 +103,7 @@ namespace NuGet.ProjectManagement
                 dependencySet = new JObject();
             }
 
-            var packageProperty = new JProperty(dependency.Id, dependency.VersionRange.MinVersion.ToNormalizedString());
+            var packageProperty = new JProperty(dependency.Id, dependency.VersionRange.MinVersion.ToString());
             dependencySet.Add(packageProperty);
 
             // order dependencies to reduce merge conflicts
