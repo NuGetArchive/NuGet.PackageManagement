@@ -728,6 +728,11 @@ namespace NuGet.PackageManagement
                     // Keep only the target package we are trying to install for that Id
                     var prunedAvailablePackages = PrunePackageTree.RemoveAllVersionsForIdExcept(availablePackageDependencyInfoWithSourceSet, packageIdentity);
 
+                    if (!downgradeAllowed)
+                    {
+                        prunedAvailablePackages = PrunePackageTree.PruneDowngrades(prunedAvailablePackages, projectInstalledPackageReferences);
+                    }
+
                     if (!resolutionContext.IncludePrerelease)
                     {
                         prunedAvailablePackages = PrunePackageTree.PrunePreleaseForStableTargets(
@@ -781,11 +786,6 @@ namespace NuGet.PackageManagement
 
                         if (newPackageWithSameId != null)
                         {
-                            if (!downgradeAllowed
-                                && oldInstalledPackage.Version > newPackageWithSameId.Version)
-                            {
-                                throw new InvalidOperationException(string.Format(CultureInfo.CurrentCulture, Strings.NewerVersionAlreadyReferenced, newPackageWithSameId.Id));
-                            }
                             newPackagesToUninstall.Add(oldInstalledPackage);
                         }
                     }
