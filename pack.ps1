@@ -6,7 +6,7 @@ param (
     [ValidateSet("debug", "release")][string]$Configuration="release",
     [switch]$SkipTests,
     [string]$PFXPath,
-    [switch]$DelaySign,
+    [switch]$DelaySign,Version
     [Parameter(Mandatory=$true)][string]$Version,
     [string]$MsbuildParameters = ''
 )
@@ -35,6 +35,8 @@ function Pack(
     if ((Test-Path nupkgs) -eq 0) {
         New-Item -ItemType directory -Path nupkgs | Out-Null
     }
+	
+	$Version="3.0.0-beta"
 
     # Pack
 	Write-Host "Project path is $ProjectPath"
