@@ -2,11 +2,10 @@ param (
 	# the additional package source used to restore packages.
 	# if it's a directory, the generated packages are also copied there	
 	[string]$PushTarget,
-
     [ValidateSet("debug", "release")][string]$Configuration="release",
     [switch]$SkipTests,
     [string]$PFXPath,
-    [switch]$DelaySign,Version
+    [switch]$DelaySign,
     [Parameter(Mandatory=$true)][string]$Version,
     [string]$MsbuildParameters = ''
 )
