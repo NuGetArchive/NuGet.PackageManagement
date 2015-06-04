@@ -1926,13 +1926,15 @@ namespace NuGet.Test
             Assert.Equal(1, packagesInPackagesConfig.Count);
             Assert.Equal(packageIdentity0, packagesInPackagesConfig[0].PackageIdentity);
             Assert.Equal(projectTargetFramework, packagesInPackagesConfig[0].TargetFramework);
-            var installedPackageIds = (await msBuildNuGetProject.GetInstalledPackagesAsync(token))
-                .Select(pr => pr.PackageIdentity.Id);
 
             // Main Act
-            var packageActions = (await nuGetPackageManager.PreviewUpdatePackagesAsync(installedPackageIds, msBuildNuGetProject,
-                new ResolutionContext(DependencyBehavior.Highest), new TestNuGetProjectContext(), sourceRepositoryProvider.GetRepositories().First(),
-                null, token)).ToList();
+            var packageActions = (await nuGetPackageManager.PreviewUpdatePackagesAsync(
+                msBuildNuGetProject,
+                new ResolutionContext(DependencyBehavior.Highest), 
+                new TestNuGetProjectContext(),
+                sourceRepositoryProvider.GetRepositories(),
+                sourceRepositoryProvider.GetRepositories(),
+                token)).ToList();
 
             // Assert
             Assert.Equal(2, packageActions.Count);
@@ -1991,13 +1993,15 @@ namespace NuGet.Test
             Assert.Equal(projectTargetFramework, packagesInPackagesConfig[1].TargetFramework);
             Assert.Equal(MorePackageWithDependents[2], packagesInPackagesConfig[0].PackageIdentity);
             Assert.Equal(projectTargetFramework, packagesInPackagesConfig[0].TargetFramework);
-            var installedPackageIds = (await msBuildNuGetProject.GetInstalledPackagesAsync(token))
-                .Select(pr => pr.PackageIdentity.Id);
 
             // Main Act
-            var packageActions = (await nuGetPackageManager.PreviewUpdatePackagesAsync(installedPackageIds, msBuildNuGetProject,
-                new ResolutionContext(DependencyBehavior.Highest), new TestNuGetProjectContext(), sourceRepositoryProvider.GetRepositories().First(),
-                null, token)).ToList();
+            var packageActions = (await nuGetPackageManager.PreviewUpdatePackagesAsync(
+                msBuildNuGetProject,
+                new ResolutionContext(DependencyBehavior.Highest), 
+                new TestNuGetProjectContext(),
+                sourceRepositoryProvider.GetRepositories(),
+                sourceRepositoryProvider.GetRepositories(),
+                token)).ToList();
 
             // Assert
             Assert.Equal(4, packageActions.Count);
@@ -2018,6 +2022,7 @@ namespace NuGet.Test
             TestFilesystemUtility.DeleteRandomTestFolders(testSolutionManager.SolutionDirectory, randomPackagesConfigFolderPath);
         }
 
+        /*
         [Fact]
         public async Task TestPacManPreviewReinstallPackages()
         {
@@ -2066,8 +2071,8 @@ namespace NuGet.Test
 
             // Main Act
             var packageActions = (await nuGetPackageManager.PreviewReinstallPackagesAsync(installedPackageIdentities, msBuildNuGetProject,
-                new ResolutionContext(DependencyBehavior.Highest), new TestNuGetProjectContext(), sourceRepositoryProvider.GetRepositories().First(),
-                null, token)).ToList();
+                new ResolutionContext(DependencyBehavior.Highest), new TestNuGetProjectContext(), sourceRepositoryProvider.GetRepositories(),
+                token)).ToList();
 
             // Assert
             var singlePackageSource = sourceRepositoryProvider.GetRepositories().Single().PackageSource.Source;
@@ -2091,7 +2096,9 @@ namespace NuGet.Test
             // Clean-up
             TestFilesystemUtility.DeleteRandomTestFolders(testSolutionManager.SolutionDirectory, randomPackagesConfigFolderPath);
         }
+        */
 
+        /*
         [Fact]
         public async Task TestPacManReinstallPackages()
         {
@@ -2142,8 +2149,8 @@ namespace NuGet.Test
 
             // Act
             var packageActions = (await nuGetPackageManager.PreviewReinstallPackagesAsync(installedPackageIdentities, msBuildNuGetProject,
-                new ResolutionContext(DependencyBehavior.Highest), new TestNuGetProjectContext(), sourceRepositoryProvider.GetRepositories().First(),
-                null, token)).ToList();
+                new ResolutionContext(DependencyBehavior.Highest), new TestNuGetProjectContext(), sourceRepositoryProvider.GetRepositories(),
+                token)).ToList();
 
             // Assert
             var singlePackageSource = sourceRepositoryProvider.GetRepositories().Single().PackageSource.Source;
@@ -2185,6 +2192,7 @@ namespace NuGet.Test
             // Clean-up
             TestFilesystemUtility.DeleteRandomTestFolders(testSolutionManager.SolutionDirectory, randomPackagesConfigFolderPath);
         }
+        */
 
         [Fact]
         public async Task TestPacManOpenReadmeFile()
@@ -2582,8 +2590,13 @@ namespace NuGet.Test
             Assert.NotNull(newtonsoftJsonPackageReference.AllowedVersions);
 
             // Main Act
-            var nuGetProjectActions = (await nuGetPackageManager.PreviewUpdatePackagesAsync(new List<string> { newtonsoftJsonPackageId, "Microsoft.Web.Infrastructure" }, msBuildNuGetProject,
-                resolutionContext, testNuGetProjectContext, primarySourceRepository, null, token)).ToList();
+            var nuGetProjectActions = (await nuGetPackageManager.PreviewUpdatePackagesAsync(
+                msBuildNuGetProject,
+                resolutionContext, 
+                testNuGetProjectContext,
+                sourceRepositoryProvider.GetRepositories(),
+                sourceRepositoryProvider.GetRepositories(),
+                token)).ToList();
 
             // Microsoft.Web.Infrastructure has no updates. However, newtonsoft.json has updates but does not satisfy the version range
             // Hence, no nuget project actions to perform
