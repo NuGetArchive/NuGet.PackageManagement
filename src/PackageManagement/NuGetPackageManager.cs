@@ -1121,11 +1121,6 @@ namespace NuGet.PackageManagement
         private async Task<IEnumerable<NuGetProjectAction>> PreviewUninstallPackageAsyncPrivate(NuGetProject nuGetProject, Packaging.PackageReference packageReference,
             UninstallationContext uninstallationContext, INuGetProjectContext nuGetProjectContext, CancellationToken token)
         {
-            if (SolutionManager == null)
-            {
-                throw new InvalidOperationException(Strings.SolutionManagerNotAvailableForUninstall);
-            }
-
             if (nuGetProject is INuGetIntegratedProject)
             {
                 var action = NuGetProjectAction.CreateUninstallProjectAction(packageReference.PackageIdentity);
@@ -1141,6 +1136,12 @@ namespace NuGet.PackageManagement
                 }
 
                 return actions;
+            }
+
+            // Non NuGet integrated projects need SolutionManager to perform uninstall
+            if (SolutionManager == null)
+            {
+                throw new InvalidOperationException(Strings.SolutionManagerNotAvailableForUninstall);
             }
 
             // Step-1 : Get the metadata resources from "packages" folder or custom repository path
@@ -1223,6 +1224,8 @@ namespace NuGet.PackageManagement
                     nuGetProjectActions,
                     nuGetProjectContext,
                     token);
+
+                return;
             }
             else
             {
