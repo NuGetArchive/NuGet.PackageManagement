@@ -31,13 +31,20 @@ namespace NuGet.ProjectManagement
 
         public static string GetEffectiveGlobalPackagesFolder(string solutionDirectory, ISettings settings)
         {
-            // solutionDirectory could be null or empty. If not, it should be a full path, not a relative path
-            Debug.Assert(string.IsNullOrEmpty(solutionDirectory) || Path.IsPathRooted(solutionDirectory));
+            if (settings == null)
+            {
+                throw new ArgumentNullException(nameof(settings));
+            }
 
             var globalPackagesFolder = SettingsUtility.GetGlobalPackagesFolder(settings);
-            if (string.IsNullOrEmpty(solutionDirectory))
+            if (Path.IsPathRooted(globalPackagesFolder))
             {
                 return globalPackagesFolder;
+            }
+
+            if (string.IsNullOrEmpty(solutionDirectory) || !Path.IsPathRooted(solutionDirectory))
+            {
+                throw new ArgumentException(Strings.SolutionDirectoryShouldBeANonNullFullPath);
             }
 
             return Path.GetFullPath(Path.Combine(solutionDirectory, globalPackagesFolder));
