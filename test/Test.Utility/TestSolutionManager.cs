@@ -143,6 +143,11 @@ namespace Test.Utility
             get { return NuGetProjects.Count > 0; }
         }
 
+        public bool IsSolutionAvailable
+        {
+            get { return IsSolutionOpen; }
+        }
+
         public void ThrowIfNotAvailable()
         {
 
