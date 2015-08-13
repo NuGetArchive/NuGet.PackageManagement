@@ -82,6 +82,8 @@ namespace NuGet.CommandLine
                 try
                 {
                     var xDocument = XDocument.Load(projectConfigFilePath);
+                    var reader = new PackagesConfigReader(XDocument.Load(projectConfigFilePath));
+                    return reader.GetPackages();
                 }
                 catch (XmlException ex)
                 {
@@ -93,9 +95,6 @@ namespace NuGet.CommandLine
 
                     throw new CommandLineException(message);
                 }
-
-                var reader = new PackagesConfigReader(XDocument.Load(projectConfigFilePath));
-                return reader.GetPackages();
             }
 
             return Enumerable.Empty<Packaging.PackageReference>();
