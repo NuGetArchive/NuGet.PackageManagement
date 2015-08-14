@@ -71,8 +71,6 @@ namespace NuGet.PackageManagement
         /// passed in.
         /// </returns>
         NuGetProject GetNuGetProject(string nuGetProjectSafeName);
-
-        void ThrowIfNotAvailable();
     }
 
     public class NuGetProjectEventArgs : EventArgs

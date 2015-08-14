@@ -412,11 +412,11 @@ namespace NuGet.ProjectManagement {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Solution directory must be a non-null full path.
+        ///   Looks up a localized string similar to Solution directory &apos;{0}&apos; must be a rooted path..
         /// </summary>
-        public static string SolutionDirectoryShouldBeANonNullFullPath {
+        public static string SolutionDirectoryMustBeRooted {
             get {
-                return ResourceManager.GetString("SolutionDirectoryShouldBeANonNullFullPath", resourceCulture);
+                return ResourceManager.GetString("SolutionDirectoryMustBeRooted", resourceCulture);
             }
         }
         

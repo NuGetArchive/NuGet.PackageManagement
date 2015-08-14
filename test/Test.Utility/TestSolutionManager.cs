@@ -148,11 +148,6 @@ namespace Test.Utility
             get { return IsSolutionOpen; }
         }
 
-        public void ThrowIfNotAvailable()
-        {
-
-        }
-
         public INuGetProjectContext NuGetProjectContext { get; set; }
 
 #pragma warning disable 0067
