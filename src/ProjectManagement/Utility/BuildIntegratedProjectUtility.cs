@@ -42,9 +42,14 @@ namespace NuGet.ProjectManagement
                 return globalPackagesFolder;
             }
 
-            if (string.IsNullOrEmpty(solutionDirectory) || !Path.IsPathRooted(solutionDirectory))
+            if (string.IsNullOrEmpty(solutionDirectory))
             {
-                throw new ArgumentException(Strings.SolutionDirectoryShouldBeANonNullFullPath);
+                throw new ArgumentNullException(nameof(solutionDirectory));
+            }
+
+            if (!Path.IsPathRooted(solutionDirectory))
+            {
+                throw new ArgumentException(Strings.SolutionDirectoryMustBeRooted);
             }
 
             return Path.GetFullPath(Path.Combine(solutionDirectory, globalPackagesFolder));
