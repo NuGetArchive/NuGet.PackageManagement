@@ -157,12 +157,9 @@ namespace Test.Utility
 
         public event EventHandler<NuGetProjectEventArgs> NuGetProjectRenamed;
 
-        public event EventHandler SolutionClosed;
-
-        public event EventHandler SolutionClosing;
-
         public event EventHandler SolutionOpened;
-        public event EventHandler SolutionOpening;
+        public event EventHandler SolutionAvailable;
+        public event EventHandler SolutionClosed;
 
 #pragma warning restore 0067
     }
