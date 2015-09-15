@@ -3,6 +3,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.Composition;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Linq;
 using System.Threading;
@@ -39,9 +41,12 @@ namespace NuGet.PackageManagement.UI
         // The list of packages that have updates available
         private List<UISearchMetadata> _packagesWithUpdates;
 
+        private IEnumerable<IPackageProvider> _packageProviders { get; set; }
+
         public PackageLoader(PackageLoaderOption option,
             NuGetPackageManager packageManager,
             IEnumerable<NuGetProject> projects,
+            IEnumerable<IPackageProvider> packageProviders,
             SourceRepository sourceRepository,
             string searchText)
         {
@@ -50,6 +55,7 @@ namespace NuGet.PackageManagement.UI
             _projects = projects.ToArray();
             _option = option;
             _searchText = searchText;
+            _packageProviders = packageProviders;
 
             LoadingMessage = string.IsNullOrWhiteSpace(searchText) ?
                 Resources.Text_Loading :
@@ -510,6 +516,15 @@ namespace NuGet.PackageManagement.UI
                 searchResultPackage.Id = package.Identity.Id;
                 searchResultPackage.Version = package.Identity.Version;
                 searchResultPackage.IconUrl = package.IconUrl;
+
+                if (_packageProviders != null)
+                {
+                    var projectName = _projects[0].GetMetadata<string>(NuGetProjectMetadataKeys.Name);
+                    searchResultPackage.PackageProviders = _packageProviders
+                        .Where(provider => provider.PackageExists(package.Identity.Id, projectName))
+                        .ToList();
+                    searchResultPackage.ProjectName = projectName;
+                }
 
                 var versionList = new Lazy<Task<IEnumerable<VersionInfo>>>(async () =>
                 {

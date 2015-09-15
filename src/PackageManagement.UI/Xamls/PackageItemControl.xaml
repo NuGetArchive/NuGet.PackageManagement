@@ -83,13 +83,18 @@
             Height="32"
             MaxHeight="32" />
         </Grid.RowDefinitions>
-        <TextBlock
-          Grid.Row="0"
-          FontWeight="Bold"
-          TextTrimming="CharacterEllipsis"
-          TextWrapping="NoWrap"
-          AutomationProperties.AutomationId="id"
-          Text="{Binding Id}" />
+        <StackPanel Grid.Row="0" Orientation="Horizontal">
+          <TextBlock
+            FontWeight="Bold"
+            TextTrimming="CharacterEllipsis"
+            TextWrapping="NoWrap"
+            AutomationProperties.AutomationId="id"
+            Text="{Binding Id}" />
+          <ui:PackageProviders
+            x:Name="_packageProviders"
+            Margin="5,0"
+            DataContext="{Binding PackageProviders}" />
+        </StackPanel>
         <TextBlock
           Grid.Row="1"
           Text="{Binding Summary, Converter={StaticResource SummaryToStringConverter}}"

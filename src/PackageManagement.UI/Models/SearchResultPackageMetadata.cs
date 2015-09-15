@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Threading.Tasks;
+using NuGet.ProjectManagement;
 using NuGet.Protocol.Core.Types;
 using NuGet.Protocol.VisualStudio;
 using NuGet.Versioning;
@@ -77,6 +78,19 @@ namespace NuGet.PackageManagement.UI
 
                 OnPropertyChanged(nameof(Status));
             }
+        }
+
+        // Other package providers for this package
+        public IEnumerable<IPackageProvider> PackageProviders
+        {
+            get; set;
+        }
+
+        // The project associated with the package providers
+        public string ProjectName
+        {
+            get;
+            set;
         }
 
         public SearchResultPackageMetadata(SourceRepository source)

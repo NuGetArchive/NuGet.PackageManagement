@@ -14,6 +14,7 @@ namespace NuGet.PackageManagement.UI
     public abstract class NuGetUIContextBase : INuGetUIContext
     {
         private readonly NuGetProject[] _projects;
+        private readonly IEnumerable<IPackageProvider> _packageProviders;
 
         protected NuGetUIContextBase(
             ISourceRepositoryProvider sourceProvider,
@@ -22,7 +23,8 @@ namespace NuGet.PackageManagement.UI
             UIActionEngine uiActionEngine,
             IPackageRestoreManager packageRestoreManager,
             IOptionsPageActivator optionsPageActivator,
-            IEnumerable<NuGetProject> projects)
+            IEnumerable<NuGetProject> projects,
+            IEnumerable<IPackageProvider> packageProviders)
         {
             SourceProvider = sourceProvider;
             SolutionManager = solutionManager;
@@ -32,6 +34,7 @@ namespace NuGet.PackageManagement.UI
             PackageRestoreManager = packageRestoreManager;
             OptionsPageActivator = optionsPageActivator;
             _projects = projects.ToArray();
+            _packageProviders = packageProviders;
         }
 
         public ISourceRepositoryProvider SourceProvider { get; }
@@ -45,6 +48,14 @@ namespace NuGet.PackageManagement.UI
         public IPackageRestoreManager PackageRestoreManager { get; }
 
         public IOptionsPageActivator OptionsPageActivator { get; }
+
+        public IEnumerable<IPackageProvider> PackageProviders
+        {
+            get
+            {
+                return _packageProviders;
+            }
+        }
 
         public IEnumerable<NuGetProject> Projects
         {

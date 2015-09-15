@@ -82,6 +82,7 @@
     <Compile Include="IDE\ISolutionManager.cs" />
     <Compile Include="IDE\PackageRestoreManager.cs" />
     <Compile Include="Context\PackageManagementContext.cs" />
+    <Compile Include="IPackageProvider.cs" />
     <Compile Include="PackageManagementConstants.cs" />
     <Compile Include="Resolution\GatherCacheResult.cs" />
     <Compile Include="Resolution\GatherContext.cs" />

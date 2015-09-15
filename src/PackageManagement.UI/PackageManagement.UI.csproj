@@ -220,6 +220,9 @@
     <Compile Include="Xamls\DetailControl.xaml.cs">
       <DependentUpon>DetailControl.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Xamls\PackageProviders.xaml.cs">
+      <DependentUpon>PackageProviders.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Xamls\PreviewWindow.xaml.cs">
       <DependentUpon>PreviewWindow.xaml</DependentUpon>
     </Compile>
@@ -283,6 +286,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Xamls\DetailControl.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Xamls\PackageProviders.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

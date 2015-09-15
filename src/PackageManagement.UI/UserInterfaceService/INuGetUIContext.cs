@@ -23,6 +23,8 @@ namespace NuGet.PackageManagement.UI
 
         IEnumerable<NuGetProject> Projects { get; }
 
+        IEnumerable<IPackageProvider> PackageProviders { get; }
+
         void AddSettings(string key, UserSettings settings);
 
         UserSettings GetSettings(string key);

@@ -14,6 +14,19 @@ namespace NuGet.PackageManagement.UI
         public PackageItemControl()
         {
             InitializeComponent();
+
+            _packageProviders.PackageProviderClicked += PackageProviders_PackageProviderClicked;
+        }
+
+        private void PackageProviders_PackageProviderClicked(object sender, PackageProviderEventArgs e)
+        {
+            var searchResultPackageMetadata = DataContext as SearchResultPackageMetadata;
+            if (searchResultPackageMetadata == null)
+            {
+                return;
+            }
+
+            e.PackageProvider.LaunchUI(searchResultPackageMetadata.Id, searchResultPackageMetadata.ProjectName);
         }
     }
 }

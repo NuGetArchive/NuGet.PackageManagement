@@ -539,6 +539,7 @@ namespace NuGet.PackageManagement.UI
                         option,
                         Model.Context.PackageManager,
                         Model.Context.Projects,
+                        Model.IsSolution ? null : Model.Context.PackageProviders,
                         ActiveSource,
                         searchText);
                     await loader.InitializeAsync();
