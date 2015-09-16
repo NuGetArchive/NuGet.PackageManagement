@@ -46,6 +46,11 @@ namespace NuGet.PackageManagement.UI
 
         public abstract IEnumerable<NuGetProject> SelectedProjects { get; }
 
+        // Called when _searchResultPackage is changed
+        protected virtual void PackageChanged()
+        {
+        }
+
         /// <summary>
         /// Sets the package to be displayed in the detail control.
         /// </summary>
@@ -64,6 +69,7 @@ namespace NuGet.PackageManagement.UI
 
             _allPackageVersions = versions.Select(v => v.Version).ToList();
             CreateActions();
+            PackageChanged();
         }
 
         /// <summary>

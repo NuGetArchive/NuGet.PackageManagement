@@ -26,7 +26,7 @@ namespace NuGet.PackageManagement.UI
                 return;
             }
 
-            e.PackageProvider.LaunchUI(searchResultPackageMetadata.Id, searchResultPackageMetadata.ProjectName);
+            e.PackageProvider.LaunchUI(e.PackageId, e.ProjectName);
         }
     }
 }

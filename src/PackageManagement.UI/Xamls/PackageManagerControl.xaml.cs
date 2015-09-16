@@ -64,7 +64,8 @@ namespace NuGet.PackageManagement.UI
             {
                 _detailModel = new PackageSolutionDetailControlModel(
                     Model.Context.SolutionManager,
-                    Model.Context.Projects);
+                    Model.Context.Projects,
+                    Model.Context.PackageProviders);
             }
 
             InitializeComponent();

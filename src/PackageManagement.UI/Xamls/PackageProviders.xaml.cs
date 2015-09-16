@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -18,7 +19,7 @@ namespace NuGet.PackageManagement.UI
 {
     /// <summary>
     /// Interaction logic for PackageProviders.xaml.
-    /// DataContext is IEnumerable of IPackageProvider
+    /// DataContext is PackageProvidersModel
     /// </summary>
     /// 
     public partial class PackageProviders : UserControl
@@ -35,13 +36,15 @@ namespace NuGet.PackageManagement.UI
         [SuppressMessage("Microsoft.Globalization", "CA1303:DoNotPassLiteralsAsLocalizedParameters")]
         private void PackageProviders_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
         {
-            var providers = DataContext as IEnumerable<IPackageProvider>;
             _textBlock.Inlines.Clear();
-            if (providers != null && providers.Any())
+            var packageProvidersModel = DataContext as PackageProvidersModel;
+            if (packageProvidersModel != null &&
+                packageProvidersModel.PackageProviders != null &&
+                packageProvidersModel.PackageProviders.Any())
             {
                 _textBlock.Inlines.Add(new Run("[Consider using "));
                 bool firstProvider = true;
-                foreach (var provider in providers)
+                foreach (var provider in packageProvidersModel.PackageProviders)
                 {
                     if (!firstProvider)
                     {
@@ -51,6 +54,10 @@ namespace NuGet.PackageManagement.UI
                     var hyperLink = new Hyperlink(new Run(provider.Name));
                     hyperLink.Tag = provider;
                     hyperLink.Click += HyperLink_Click;
+                    hyperLink.ToolTip = string.Format(
+                        CultureInfo.CurrentCulture,
+                        "Open it with {0}",
+                        provider.Name);
                     _textBlock.Inlines.Add(hyperLink);
                     firstProvider = false;
                 }
@@ -67,22 +74,43 @@ namespace NuGet.PackageManagement.UI
                 return;
             }
 
+            var packageProvidersModel = DataContext as PackageProvidersModel;
             if (PackageProviderClicked != null)
             {
                 var packageProvider = hyperLink.Tag as IPackageProvider;
-                PackageProviderClicked(this, new PackageProviderEventArgs(packageProvider));
+                PackageProviderClicked(this, 
+                    new PackageProviderEventArgs(
+                        packageProvider,
+                        packageProvidersModel.PackageId,
+                        packageProvidersModel.ProjectName));
             }            
         }
     }
 
     public class PackageProviderEventArgs : EventArgs
     {
-        public PackageProviderEventArgs(IPackageProvider packageProvider)
+        public PackageProviderEventArgs(IPackageProvider packageProvider,
+            string packageId,
+            string projectName)
         {
             PackageProvider = packageProvider;
+            PackageId = packageId;
+            ProjectName = projectName;
         }
 
         public IPackageProvider PackageProvider
+        {
+            get;
+            private set;
+        }
+
+        public string PackageId
+        {
+            get;
+            private set;
+        }
+
+        public string ProjectName
         {
             get;
             private set;

@@ -80,19 +80,11 @@ namespace NuGet.PackageManagement.UI
             }
         }
 
-        // Other package providers for this package
-        public IEnumerable<IPackageProvider> PackageProviders
+        public PackageProvidersModel PackageProvidersModel
         {
             get; set;
         }
-
-        // The project associated with the package providers
-        public string ProjectName
-        {
-            get;
-            set;
-        }
-
+        
         public SearchResultPackageMetadata(SourceRepository source)
         {
             Source = source;

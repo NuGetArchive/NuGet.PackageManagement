@@ -115,9 +115,12 @@ namespace NuGet.PackageManagement.UI
             OnPropertyChanged("Versions");
         }
 
+        private IEnumerable<IPackageProvider> _packageProviders;
+
         public PackageSolutionDetailControlModel(
             ISolutionManager solutionManager,
-            IEnumerable<NuGetProject> projects)
+            IEnumerable<NuGetProject> projects,
+            IEnumerable<IPackageProvider> packageProviders)
             :
                 base(projects)
         {
@@ -126,6 +129,7 @@ namespace NuGet.PackageManagement.UI
             _solutionManager.NuGetProjectRemoved += (_, __) => RefreshProjectListAfterProjectAddedRemovedOrRenamed();
             _solutionManager.NuGetProjectRenamed += (_, __) => RefreshProjectListAfterProjectAddedRemovedOrRenamed();
 
+            _packageProviders = packageProviders;
             RefreshAllProjectList();
         }
 
@@ -136,12 +140,33 @@ namespace NuGet.PackageManagement.UI
 
             RefreshAllProjectList();
             RefreshProjectList();
+            UpdatePackageProviders();
+        }
+
+        // Update the package providers of each project
+        private void UpdatePackageProviders()
+        {
+            _allProjects.ForEach(
+                p =>
+                {
+                    var providers = _packageProviders
+                        .Where(provider => provider.PackageExists(Id, p.ProjectName));
+                    var packageProvidersModel = new PackageProvidersModel(
+                        providers,
+                        Id,
+                        p.ProjectName);
+                    p.PackageProvidersModel = packageProvidersModel;
+                });
         }
 
         // Refresh the _allProjects list.
         private void RefreshAllProjectList()
         {
-            _allProjects = _nugetProjects.Select(p => new PackageInstallationInfo(p, null, true))
+            _allProjects = _nugetProjects
+                .Select(p =>
+                {                    
+                    return new PackageInstallationInfo(p, null, true);
+                })
                 .ToList();
             _allProjects.Sort();
             _allProjects.ForEach(p =>
@@ -213,6 +238,11 @@ namespace NuGet.PackageManagement.UI
                 .Select(package => package.PackageIdentity.Version)
                 .Distinct();
             return installedVersions.Count() >= 2;
+        }
+
+        protected override void PackageChanged()
+        {
+            UpdatePackageProviders();
         }
 
         private void RefreshProjectList()

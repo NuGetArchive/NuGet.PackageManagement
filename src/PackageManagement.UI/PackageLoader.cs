@@ -520,10 +520,13 @@ namespace NuGet.PackageManagement.UI
                 if (_packageProviders != null)
                 {
                     var projectName = _projects[0].GetMetadata<string>(NuGetProjectMetadataKeys.Name);
-                    searchResultPackage.PackageProviders = _packageProviders
-                        .Where(provider => provider.PackageExists(package.Identity.Id, projectName))
-                        .ToList();
-                    searchResultPackage.ProjectName = projectName;
+                    var packageProviders = _packageProviders
+                        .Where(provider => provider.PackageExists(package.Identity.Id, projectName));
+                    searchResultPackage.PackageProvidersModel =
+                        new PackageProvidersModel(
+                            packageProviders,
+                            package.Identity.Id,
+                            projectName);
                 }
 
                 var versionList = new Lazy<Task<IEnumerable<VersionInfo>>>(async () =>

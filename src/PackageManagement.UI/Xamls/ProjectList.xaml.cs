@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System.Diagnostics.CodeAnalysis;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -36,6 +37,13 @@ namespace NuGet.PackageManagement.UI
             }
 
             model.UncheckAllProjects();
+        }
+        
+        [SuppressMessage("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode", 
+            Justification ="It is called in the xaml file")]
+        private void PackageProviders_PackageProviderClicked(object sender, PackageProviderEventArgs e)
+        {
+            e.PackageProvider.LaunchUI(e.PackageId, e.ProjectName);
         }
     }
 }

@@ -147,6 +147,7 @@
     <Compile Include="LoadingStatus.cs" />
     <Compile Include="LoadingStatusIndicator.cs" />
     <Compile Include="LoadResult.cs" />
+    <Compile Include="Models\PackageProvidersModel.cs" />
     <Compile Include="Models\PackageStatus.cs" />
     <Compile Include="Models\SearchResult.cs" />
     <Compile Include="PackageInstallationInfo.cs" />

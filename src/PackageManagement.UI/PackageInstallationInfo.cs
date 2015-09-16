@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Globalization;
 using NuGet.ProjectManagement;
@@ -77,6 +78,33 @@ namespace NuGet.PackageManagement.UI
             Enabled = enabled;
 
             UpdateDisplayText();
+        }
+
+        private PackageProvidersModel _packageProvidersModel;
+
+        // Other package providers for this package
+        public PackageProvidersModel PackageProvidersModel
+        {
+            get
+            {
+                return _packageProvidersModel;
+            }
+            set
+            {
+                if (_packageProvidersModel != value)
+                {
+                    _packageProvidersModel = value;
+                    OnPropertyChanged(nameof(PackageProvidersModel));
+                }
+            }
+        }
+
+        public string ProjectName
+        {
+            get
+            {
+                return _name;
+            }
         }
 
         private string _displayText;

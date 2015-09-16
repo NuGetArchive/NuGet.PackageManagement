@@ -48,7 +48,7 @@ namespace NuGet.PackageManagement.UI
         public IPackageRestoreManager PackageRestoreManager { get; }
 
         public IOptionsPageActivator OptionsPageActivator { get; }
-
+        
         public IEnumerable<IPackageProvider> PackageProviders
         {
             get
