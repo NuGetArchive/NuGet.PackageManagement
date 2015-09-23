@@ -72,7 +72,8 @@ namespace NuGet.PackageManagement.UI
             _windowSearchHostFactory = searchFactory;
             if (_windowSearchHostFactory != null)
             {
-                _windowSearchHost = _windowSearchHostFactory.CreateWindowSearchHost(_searchControlParent);
+                _windowSearchHost = _windowSearchHostFactory.CreateWindowSearchHost(
+                    _topPanel.SearchControlParent);
                 _windowSearchHost.SetupSearch(this);
                 _windowSearchHost.IsVisible = true;
             }
@@ -117,10 +118,11 @@ namespace NuGet.PackageManagement.UI
 
         private void InitializeFilterList(UserSettings settings)
         {
+            /* !!!
             _filter.DisplayMemberPath = "Text";
             var items = new[]
                 {
-                    new FilterItem(Filter.All, Resx.Resources.Filter_All),
+                    new FilterItem(Filter.All, Resx.Resources.Label_Browse),
                     new FilterItem(Filter.Installed, Resx.Resources.Filter_Installed),
                     new FilterItem(Filter.UpdatesAvailable, Resx.Resources.Filter_UpgradeAvailable)
                 };
@@ -137,7 +139,7 @@ namespace NuGet.PackageManagement.UI
             else
             {
                 _filter.SelectedItem = items[0];
-            }
+            } */
         }
 
         private static bool IsUILegalDisclaimerSuppressed()
@@ -193,7 +195,7 @@ namespace NuGet.PackageManagement.UI
             _detailModel.Options.ShowPreviewWindow = settings.ShowPreviewWindow;
             _detailModel.Options.RemoveDependencies = settings.RemoveDependencies;
             _detailModel.Options.ForceRemove = settings.ForceRemove;
-            _checkboxPrerelease.IsChecked = settings.IncludePrerelease;
+            _topPanel.CheckboxPrerelease.IsChecked = settings.IncludePrerelease;
 
             SetSelectedDepencyBehavior(settings.DependencyBehavior);
 
@@ -218,14 +220,14 @@ namespace NuGet.PackageManagement.UI
             _dontStartNewSearch = true;
             try
             {
-                var oldActiveSource = _sourceRepoList.SelectedItem as SourceRepository;
+                var oldActiveSource = _topPanel.SourceRepoList.SelectedItem as SourceRepository;
                 var newSources = GetEnabledSources();
 
                 // Update the source repo list with the new value.
-                _sourceRepoList.Items.Clear();
+                _topPanel.SourceRepoList.Items.Clear();
                 foreach (var source in newSources)
                 {
-                    _sourceRepoList.Items.Add(source);
+                    _topPanel.SourceRepoList.Items.Add(source);
                 }
 
                 SetNewActiveSource(newSources, oldActiveSource);
@@ -285,15 +287,16 @@ namespace NuGet.PackageManagement.UI
             settings.ForceRemove = _detailModel.Options.ForceRemove;
             settings.DependencyBehavior = _detailModel.Options.SelectedDependencyBehavior.Behavior;
             settings.FileConflictAction = _detailModel.Options.SelectedFileConflictAction.Action;
-            settings.IncludePrerelease = _checkboxPrerelease.IsChecked == true;
+            settings.IncludePrerelease = _topPanel.CheckboxPrerelease.IsChecked == true;
 
+            /* !!!
             var filterItem = _filter.SelectedItem as FilterItem;
             if (filterItem != null)
             {
                 settings.SelectedFilter = filterItem.Filter;
             }
 
-            Model.Context.AddSettings(GetSettingsKey(), settings);
+            Model.Context.AddSettings(GetSettingsKey(), settings); */
         }
 
         private UserSettings LoadSettings()
@@ -343,7 +346,7 @@ namespace NuGet.PackageManagement.UI
                 }
             }
 
-            _sourceRepoList.SelectedItem = ActiveSource;
+            _topPanel.SourceRepoList.SelectedItem = ActiveSource;
             if (ActiveSource != null)
             {
                 Model.Context.SourceProvider.PackageSourceProvider.SaveActivePackageSource(ActiveSource.PackageSource);
@@ -458,11 +461,11 @@ namespace NuGet.PackageManagement.UI
         private void InitSourceRepoList(UserSettings settings)
         {
             // init source repo list
-            _sourceRepoList.Items.Clear();
+            _topPanel.SourceRepoList.Items.Clear();
             var enabledSources = GetEnabledSources();
             foreach (var source in enabledSources)
             {
-                _sourceRepoList.Items.Add(source);
+                _topPanel.SourceRepoList.Items.Add(source);
             }
 
             // get active source name.
@@ -493,7 +496,7 @@ namespace NuGet.PackageManagement.UI
 
             if (ActiveSource != null)
             {
-                _sourceRepoList.SelectedItem = ActiveSource;
+                _topPanel.SourceRepoList.SelectedItem = ActiveSource;
             }
         }
 
@@ -501,8 +504,7 @@ namespace NuGet.PackageManagement.UI
         {
             get
             {
-                var filterItem = _filter.SelectedItem as FilterItem;
-                return filterItem != null && filterItem.Filter == Filter.Installed;
+                return _topPanel.Filter == Filter.Installed;
             }
         }
 
@@ -510,14 +512,13 @@ namespace NuGet.PackageManagement.UI
         {
             get
             {
-                var filterItem = _filter.SelectedItem as FilterItem;
-                return filterItem != null && filterItem.Filter == Filter.UpdatesAvailable;
+                return _topPanel.Filter == Filter.UpdatesAvailable;
             }
         }
 
         public bool IncludePrerelease
         {
-            get { return _checkboxPrerelease.IsChecked == true; }
+            get { return _topPanel.CheckboxPrerelease.IsChecked == true; }
         }
 
         internal SourceRepository ActiveSource { get; private set; }
@@ -529,12 +530,7 @@ namespace NuGet.PackageManagement.UI
         {
             NuGetUIThreadHelper.JoinableTaskFactory.RunAsync(async delegate
                 {
-                    var filterItem = _filter.SelectedItem as FilterItem;
-                    var filter = filterItem != null ?
-                        filterItem.Filter :
-                        Filter.All;
-
-                    var option = new PackageLoaderOption(filter, IncludePrerelease);
+                    var option = new PackageLoaderOption(_topPanel.Filter, IncludePrerelease);
                     var loader = new PackageLoader(
                         option,
                         Model.Context.PackageManager,
@@ -546,7 +542,7 @@ namespace NuGet.PackageManagement.UI
                 });
         }
 
-        private void SettingsButtonClick(object sender, RoutedEventArgs e)
+        private void SettingsButtonClicked(object sender, EventArgs e)
         {
             Model.UIController.LaunchNuGetOptionsDialog();
         }
@@ -570,9 +566,9 @@ namespace NuGet.PackageManagement.UI
             else
             {
                 _packageDetail.Visibility = Visibility.Visible;
-                var selectedFilter = _filter.SelectedItem as FilterItem;
-                await _detailModel.SetCurrentPackage(selectedPackage,
-                                                     selectedFilter == null ? Filter.All : selectedFilter.Filter);
+                await _detailModel.SetCurrentPackage(
+                    selectedPackage,
+                    _topPanel.Filter);
 
                 _packageDetail.DataContext = _detailModel;
                 _packageDetail.ScrollToHome();
@@ -608,11 +604,11 @@ namespace NuGet.PackageManagement.UI
                 return;
             }
 
-            ActiveSource = _sourceRepoList.SelectedItem as SourceRepository;
+            ActiveSource = _topPanel.SourceRepoList.SelectedItem as SourceRepository;
             if (ActiveSource != null)
             {
-                _sourceTooltip.Visibility = Visibility.Visible;
-                _sourceTooltip.DataContext = GetPackageSourceTooltip(ActiveSource.PackageSource);
+                _topPanel.SourceToolTip.Visibility = Visibility.Visible;
+                _topPanel.SourceToolTip.DataContext = GetPackageSourceTooltip(ActiveSource.PackageSource);
 
                 Model.Context.SourceProvider.PackageSourceProvider.SaveActivePackageSource(ActiveSource.PackageSource);
                 SaveSettings();
@@ -736,7 +732,9 @@ namespace NuGet.PackageManagement.UI
                 return;
             }
 
-            RegistrySettingUtility.SetBooleanSetting(Constants.IncludePrereleaseRegistryName, _checkboxPrerelease.IsChecked == true);
+            RegistrySettingUtility.SetBooleanSetting(
+                Constants.IncludePrereleaseRegistryName, 
+                _topPanel.CheckboxPrerelease.IsChecked == true);
             SearchPackageInActivePackageSource(_windowSearchHost.SearchQuery.SearchString);
         }
 
@@ -783,7 +781,7 @@ namespace NuGet.PackageManagement.UI
             // so that the code can be run on both dev12 & dev14. If we use the type directly,
             // there will be type mismatch error.
             dynamic settings = pSearchSettings;
-            settings.ControlMinWidth = (uint)_searchControlParent.MinWidth;
+            settings.ControlMinWidth = (uint)_topPanel.SearchControlParent.MinWidth;
             settings.ControlMaxWidth = uint.MaxValue;
             settings.SearchWatermark = GetSearchText();
         }

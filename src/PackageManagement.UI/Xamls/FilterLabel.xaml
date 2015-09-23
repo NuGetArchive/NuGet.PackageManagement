@@ -1,0 +1,34 @@
+﻿<UserControl x:Class="NuGet.PackageManagement.UI.FilterLabel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:local="clr-namespace:NuGet.PackageManagement.UI"
+             mc:Ignorable="d"
+             d:DesignHeight="300" d:DesignWidth="300">
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="auto"/>
+      <RowDefinition Height="auto"/>
+    </Grid.RowDefinitions>
+    <Button 
+      x:Name="_textBlock"
+      MouseEnter="_textBlock_MouseEnter"
+      MouseLeave="_textBlock_MouseLeave"
+      Click="_textBlock_Click"
+      Grid.Row="0" >
+      <Button.Template>
+        <ControlTemplate TargetType="{x:Type Button}">
+          <ContentPresenter/>
+        </ControlTemplate>
+      </Button.Template>
+    </Button>
+    <Rectangle
+      x:Name="_underline"
+      Grid.Row="1" 
+      Height="4"
+      Fill="#FFA5C9F3"
+      Visibility="Hidden"
+      />
+  </Grid>
+</UserControl>

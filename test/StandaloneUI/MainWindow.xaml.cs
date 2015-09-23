@@ -72,7 +72,7 @@ namespace StandaloneUI
             //var projectC = testSolutionManager.AddProjectKProject("projectK");
             var projectBuildIntegrated = testSolutionManager.AddBuildIntegratedProject("BuildIntProj", NuGetFramework.Parse("net46"));
 
-            var projects = new[] { projectBuildIntegrated };
+            var projects = new[] { projectA };
 
             var packageRestoreManager = new PackageRestoreManager(
                 repositoryProvider,
