@@ -61,6 +61,55 @@ namespace NuGet.CommandLine {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Adds a given package to the offline feed or the specified source if it is a file source. http sources are not supported..
+        /// </summary>
+        internal static string AddCommandDescription {
+            get {
+                return ResourceManager.GetString("AddCommandDescription", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Specifies the fileSourceFolder. If not specified, the offline feed will be used; as configured or the default one: &quot;%USERPROFILE%\.nuget\offlinefeed&quot;. Cannot be an http source..
+        /// </summary>
+        internal static string AddCommandSourceDescription {
+            get {
+                return ResourceManager.GetString("AddCommandSourceDescription", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Specify the path to the package to be added to the offline feed. Optionally, you can specify the source if it is a file source..
+        /// </summary>
+        internal static string AddCommandUsageDescription {
+            get {
+                return ResourceManager.GetString("AddCommandUsageDescription", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to nuget add foo.nupkg
+        ///
+        ///nuget add foo.nupkg  -Source c:\bar\
+        ///
+        ///nuget add foo.nupkg -Source \\bar\packages\.
+        /// </summary>
+        internal static string AddCommandUsageExamples {
+            get {
+                return ResourceManager.GetString("AddCommandUsageExamples", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to &lt;packagePath&gt; [-Source &lt;fileSourceFolder&gt;] [options].
+        /// </summary>
+        internal static string AddCommandUsageSummary {
+            get {
+                return ResourceManager.GetString("AddCommandUsageSummary", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to The API key for the server..
         /// </summary>
         internal static string CommandApiKey {
