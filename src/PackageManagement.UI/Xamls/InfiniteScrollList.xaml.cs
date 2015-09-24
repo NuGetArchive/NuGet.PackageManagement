@@ -231,7 +231,6 @@ namespace NuGet.PackageManagement.UI
 
         private void ScrollViewer_ScrollChanged(object sender, ScrollChangedEventArgs e)
         {
-            /* !!!
             NuGetUIThreadHelper.JoinableTaskFactory.RunAsync(async delegate
                 {
                     if (_loadingStatusIndicator.Status != LoadingStatus.Ready)
@@ -245,7 +244,7 @@ namespace NuGet.PackageManagement.UI
                     {
                         await LoadAsync();
                     }
-                }); */
+                });
         }
 
         private void RetryButtonClicked(object sender, RoutedEventArgs e)

@@ -376,7 +376,7 @@ namespace NuGet.PackageManagement.UI {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Upgrade available.
+        ///   Looks up a localized string similar to Upgrade Available.
         /// </summary>
         public static string Filter_UpgradeAvailable {
             get {

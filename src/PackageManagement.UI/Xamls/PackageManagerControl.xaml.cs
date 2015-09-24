@@ -118,28 +118,10 @@ namespace NuGet.PackageManagement.UI
 
         private void InitializeFilterList(UserSettings settings)
         {
-            /* !!!
-            _filter.DisplayMemberPath = "Text";
-            var items = new[]
-                {
-                    new FilterItem(Filter.All, Resx.Resources.Label_Browse),
-                    new FilterItem(Filter.Installed, Resx.Resources.Filter_Installed),
-                    new FilterItem(Filter.UpdatesAvailable, Resx.Resources.Filter_UpgradeAvailable)
-                };
-
-            foreach (var item in items)
-            {
-                _filter.Items.Add(item);
-            }
-
             if (settings != null)
             {
-                _filter.SelectedItem = items.First(item => item.Filter == settings.SelectedFilter);
+                _topPanel.SelectFilter(settings.SelectedFilter);
             }
-            else
-            {
-                _filter.SelectedItem = items[0];
-            } */
         }
 
         private static bool IsUILegalDisclaimerSuppressed()
@@ -288,15 +270,9 @@ namespace NuGet.PackageManagement.UI
             settings.DependencyBehavior = _detailModel.Options.SelectedDependencyBehavior.Behavior;
             settings.FileConflictAction = _detailModel.Options.SelectedFileConflictAction.Action;
             settings.IncludePrerelease = _topPanel.CheckboxPrerelease.IsChecked == true;
+            settings.SelectedFilter = _topPanel.Filter;
 
-            /* !!!
-            var filterItem = _filter.SelectedItem as FilterItem;
-            if (filterItem != null)
-            {
-                settings.SelectedFilter = filterItem.Filter;
-            }
-
-            Model.Context.AddSettings(GetSettingsKey(), settings); */
+            Model.Context.AddSettings(GetSettingsKey(), settings);
         }
 
         private UserSettings LoadSettings()
@@ -597,7 +573,7 @@ namespace NuGet.PackageManagement.UI
                 packageSource.Source);
         }
 
-        private void SourceRepoList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private void SourceRepoList_SelectionChanged(object sender, EventArgs e)
         {
             if (_dontStartNewSearch || !_initialized)
             {
@@ -616,7 +592,7 @@ namespace NuGet.PackageManagement.UI
             }
         }
 
-        private void Filter_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private void Filter_SelectionChanged(object sender, EventArgs e)
         {
             if (_initialized)
             {
@@ -725,7 +701,7 @@ namespace NuGet.PackageManagement.UI
             SearchPackageInActivePackageSource(_windowSearchHost.SearchQuery.SearchString);
         }
 
-        private void CheckboxPrerelease_CheckChanged(object sender, RoutedEventArgs e)
+        private void CheckboxPrerelease_CheckChanged(object sender, EventArgs e)
         {
             if (!_initialized)
             {

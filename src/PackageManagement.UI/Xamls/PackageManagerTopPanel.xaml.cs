@@ -63,16 +63,26 @@ namespace NuGet.PackageManagement.UI
 
         private void _checkboxPrerelease_Checked(object sender, RoutedEventArgs e)
         {
-            // !!!
+            if (PrereleaseCheckChanged != null)
+            {
+                PrereleaseCheckChanged(this, EventArgs.Empty);
+            }
         }
 
         private void _checkboxPrerelease_Unchecked(object sender, RoutedEventArgs e)
         {
-            // !!!
+            if (PrereleaseCheckChanged != null)
+            {
+                PrereleaseCheckChanged(this, EventArgs.Empty);
+            }
         }
 
         private void _sourceRepoList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            if (SourceRepoListSelectionChanged != null)
+            {
+                SourceRepoListSelectionChanged(this, EventArgs.Empty);
+            }
         }
 
         private void _settingsButton_Click(object sender, RoutedEventArgs e)
@@ -85,12 +95,18 @@ namespace NuGet.PackageManagement.UI
 
         private void FilterLabel_ControlSelected(object sender, EventArgs e)
         {
+            var selectedFilter = (FilterLabel)sender;
+            if (selectedFilter == _selectedFilter)
+            {
+                return;
+            }
+
             if (_selectedFilter != null)
             {
                 _selectedFilter.Selected = false;
             }
 
-            _selectedFilter = (FilterLabel)sender;
+            _selectedFilter = selectedFilter;
             if (FilterChanged != null)
             {
                 FilterChanged(this, EventArgs.Empty);
@@ -99,5 +115,30 @@ namespace NuGet.PackageManagement.UI
 
         public event EventHandler<EventArgs> FilterChanged;
         public event EventHandler<EventArgs> SettingsButtonClicked;
+        public event EventHandler<EventArgs> PrereleaseCheckChanged;
+        public event EventHandler<EventArgs> SourceRepoListSelectionChanged;
+
+        public void SelectFilter(Filter selectedFilter)
+        {
+            if (_selectedFilter != null)
+            {
+                _selectedFilter.Selected = false;
+            }
+
+            switch (selectedFilter)
+            {
+                case Filter.All:
+                    _selectedFilter = _labelBrowse;
+                    break;
+                case Filter.Installed:
+                    _selectedFilter = _labelInstalled;
+                    break;
+                case Filter.UpdatesAvailable:
+                    _selectedFilter = _labelUpgradeAvailable;
+                    break;
+            }
+
+            _selectedFilter.Selected = true;
+        }
     }
 }

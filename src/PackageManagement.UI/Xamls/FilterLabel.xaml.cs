@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -98,6 +99,29 @@ namespace NuGet.PackageManagement.UI
             else
             {
                 Selected = true;
+            }
+        }
+
+        private int _count;
+
+        public int Count
+        {
+            get
+            {
+                return _count;
+            }
+            set
+            {
+                _count = value;
+                if (_count > 0)
+                {
+                    _textBlockCount.Text = _count.ToString(CultureInfo.CurrentCulture);
+                    _textBlockCount.Visibility = Visibility.Visible;
+                }
+                else
+                {
+                    _textBlockCount.Visibility = Visibility.Hidden;
+                }
             }
         }
     }

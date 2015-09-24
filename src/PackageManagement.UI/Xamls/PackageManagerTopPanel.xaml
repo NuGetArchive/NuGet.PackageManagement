@@ -59,6 +59,7 @@
         Margin="16,0,0,0"
         FontSize="{Binding ElementName=_self,Path=FontSize,Converter={StaticResource Font122PercentSizeConverter}}"
         Text="{x:Static resx:Resources.Filter_UpgradeAvailable}"
+        Count="100"
         ControlSelected="FilterLabel_ControlSelected">
       </local:FilterLabel>
 

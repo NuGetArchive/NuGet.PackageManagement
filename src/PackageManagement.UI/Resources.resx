@@ -298,7 +298,7 @@
     <value>Include prerelease</value>
   </data>
   <data name="Filter_UpgradeAvailable" xml:space="preserve">
-    <value>Upgrade available</value>
+    <value>Upgrade Available</value>
   </data>
   <data name="Version_Installed" xml:space="preserve">
     <value>Installed</value>

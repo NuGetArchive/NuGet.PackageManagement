@@ -58,6 +58,9 @@
         Grid.Row="3"
         Margin="35,10,24,10"
         SettingsButtonClicked="SettingsButtonClicked"
+        FilterChanged="Filter_SelectionChanged"
+        PrereleaseCheckChanged="CheckboxPrerelease_CheckChanged"
+        SourceRepoListSelectionChanged="SourceRepoList_SelectionChanged"
         />
       
       <!--
