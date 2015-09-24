@@ -6067,4 +6067,22 @@ Oluşturma sırasında NuGet'in paketleri indirmesini önlemek için, Visual Stu
   <data name="Error_MSBuildNotInstalled" xml:space="preserve">
     <value>MSBuild is not installed.</value>
   </data>
+  <data name="Path_Invalid" xml:space="preserve">
+    <value>'{0}' is not a valid path.</value>
+  </data>
+  <data name="NupkgPath_InvalidNupkg" xml:space="preserve">
+    <value>'{0}' is not a valid nupkg file.</value>
+  </data>
+  <data name="NupkgPath_NotFound" xml:space="preserve">
+    <value>'{0}' is not found.</value>
+  </data>
+  <data name="Path_Invalid_NotFileNotUnc" xml:space="preserve">
+    <value>'{0}' should be a local path or a UNC share path.</value>
+  </data>
+  <data name="Source_NotFound" xml:space="preserve">
+    <value>Source '{0}' is not found.</value>
+  </data>
+  <data name="AddCommand_SuccessfullyAdded" xml:space="preserve">
+    <value>Successfully added package '{0}' to feed '{1}'.</value>
+  </data>
 </root>

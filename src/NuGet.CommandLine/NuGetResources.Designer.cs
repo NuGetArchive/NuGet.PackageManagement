@@ -61,6 +61,15 @@ namespace NuGet.CommandLine {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Successfully added package &apos;{0}&apos; to feed &apos;{1}&apos;..
+        /// </summary>
+        public static string AddCommand_SuccessfullyAdded {
+            get {
+                return ResourceManager.GetString("AddCommand_SuccessfullyAdded", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Add file &apos;{0}&apos; to package as &apos;{1}&apos;.
         /// </summary>
         public static string AddFileToPackage {
@@ -6361,6 +6370,24 @@ namespace NuGet.CommandLine {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to &apos;{0}&apos; is not a valid nupkg file..
+        /// </summary>
+        public static string NupkgPath_InvalidNupkg {
+            get {
+                return ResourceManager.GetString("NupkgPath_InvalidNupkg", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to &apos;{0}&apos; is not found..
+        /// </summary>
+        public static string NupkgPath_NotFound {
+            get {
+                return ResourceManager.GetString("NupkgPath_NotFound", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to NuGet official package source.
         /// </summary>
         public static string OfficialPackageSourceName {
@@ -8755,6 +8782,24 @@ namespace NuGet.CommandLine {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to &apos;{0}&apos; is not a valid path..
+        /// </summary>
+        public static string Path_Invalid {
+            get {
+                return ResourceManager.GetString("Path_Invalid", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to &apos;{0}&apos; should be a local path or a UNC share path..
+        /// </summary>
+        public static string Path_Invalid_NotFileNotUnc {
+            get {
+                return ResourceManager.GetString("Path_Invalid_NotFileNotUnc", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to This version of nuget.exe does not support pushing packages to package source &apos;{0}&apos;..
         /// </summary>
         public static string PushCommand_PushNotSupported {
@@ -10933,6 +10978,15 @@ namespace NuGet.CommandLine {
         public static string SettingsCredentials_UsingSavedCredentials {
             get {
                 return ResourceManager.GetString("SettingsCredentials_UsingSavedCredentials", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Source &apos;{0}&apos; is not found..
+        /// </summary>
+        public static string Source_NotFound {
+            get {
+                return ResourceManager.GetString("Source_NotFound", resourceCulture);
             }
         }
         

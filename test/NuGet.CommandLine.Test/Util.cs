@@ -12,6 +12,7 @@ using Newtonsoft.Json.Linq;
 using NuGet.Frameworks;
 using NuGet.Packaging;
 using NuGet.Versioning;
+using Xunit;
 
 namespace NuGet.CommandLine.Test
 {
@@ -349,6 +350,24 @@ namespace NuGet.CommandLine.Test
                             <add key=""globalPackagesFolder"" value=""globalPackages"" />
                           </config>
                         </configuration>");
+        }
+
+        public static void VerifyResultSuccess(Tuple<int, string, string> result)
+        {
+            Assert.True(
+                result.Item1 == 0,
+                "nuget.exe DID NOT SUCCEED: Ouput is " + result.Item2 + ". Error is " + result.Item3);
+        }
+
+        public static void VerifyResultFailure(Tuple<int, string, string> result, string expectedErrorMessage)
+        {
+            Assert.True(
+                result.Item1 != 0,
+                "nuget.exe DID NOT FAIL: Ouput is " + result.Item2 + ". Error is " + result.Item3);
+
+            Assert.True(
+                result.Item3.Contains(expectedErrorMessage),
+                "Expected error is " + expectedErrorMessage + ". Actual error is " + result.Item3);
         }
     }
 }
