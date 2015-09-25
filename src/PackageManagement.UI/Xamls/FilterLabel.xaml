@@ -8,40 +8,45 @@
              d:DesignHeight="100" d:DesignWidth="300">
   <Grid>
     <Grid.RowDefinitions>
-      <RowDefinition Height="auto"/>
-      <RowDefinition Height="auto"/>
+      <RowDefinition Height="auto" />
+      <RowDefinition Height="auto" />
     </Grid.RowDefinitions>
-    <Button 
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition />
+      <ColumnDefinition />
+    </Grid.ColumnDefinitions>
+    <Button
       x:Name="_textBlock"
+      Grid.Row="0"
+      Grid.Column="0"      
       MouseEnter="_textBlock_MouseEnter"
       MouseLeave="_textBlock_MouseLeave"
-      Click="_textBlock_Click"
-      Grid.Row="0" 
-      Margin="0,3,10,0">
+      Click="_textBlock_Click">
       <Button.Template>
         <ControlTemplate TargetType="{x:Type Button}">
-          <ContentPresenter/>
+          <ContentPresenter />
         </ControlTemplate>
       </Button.Template>
     </Button>
     <TextBlock
       x:Name="_textBlockCount"
       Grid.Row="0"
+      Grid.Column="1"
       Foreground="White"
       FontSize="8"
-      Padding="3,0"
       Height="10"
       Visibility="Hidden"
-      Background="Blue"
+      Padding="2,0"
+      Background="#FF3399FF"
       HorizontalAlignment="Right"
       VerticalAlignment="Top">
     </TextBlock>
     <Rectangle
       x:Name="_underline"
-      Grid.Row="1" 
+      Grid.Row="1"
+      Grid.Column="0"
       Height="4"
       Fill="#FFA5C9F3"
-      Visibility="Hidden"
-      />
+      Visibility="Hidden" />
   </Grid>
 </UserControl>

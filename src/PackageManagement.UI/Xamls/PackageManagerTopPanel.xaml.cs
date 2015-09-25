@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -60,7 +61,6 @@ namespace NuGet.PackageManagement.UI
             }
         }
 
-
         private void _checkboxPrerelease_Checked(object sender, RoutedEventArgs e)
         {
             if (PrereleaseCheckChanged != null)
@@ -93,6 +93,8 @@ namespace NuGet.PackageManagement.UI
             }
         }
 
+        [SuppressMessageAttribute("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode",
+            Justification = "It is referenced by the xaml file")]
         private void FilterLabel_ControlSelected(object sender, EventArgs e)
         {
             var selectedFilter = (FilterLabel)sender;
@@ -114,8 +116,11 @@ namespace NuGet.PackageManagement.UI
         }
 
         public event EventHandler<EventArgs> FilterChanged;
+
         public event EventHandler<EventArgs> SettingsButtonClicked;
+
         public event EventHandler<EventArgs> PrereleaseCheckChanged;
+
         public event EventHandler<EventArgs> SourceRepoListSelectionChanged;
 
         public void SelectFilter(Filter selectedFilter)
@@ -130,9 +135,11 @@ namespace NuGet.PackageManagement.UI
                 case Filter.All:
                     _selectedFilter = _labelBrowse;
                     break;
+
                 case Filter.Installed:
                     _selectedFilter = _labelInstalled;
                     break;
+
                 case Filter.UpdatesAvailable:
                     _selectedFilter = _labelUpgradeAvailable;
                     break;

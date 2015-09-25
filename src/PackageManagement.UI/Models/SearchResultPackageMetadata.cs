@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Globalization;
 using System.Threading.Tasks;
 using NuGet.Protocol.Core.Types;
 using NuGet.Protocol.VisualStudio;
@@ -11,14 +12,63 @@ using NuGet.Versioning;
 
 namespace NuGet.PackageManagement.UI
 {
+    // This is the model class behind the package items in the infinite scroll list
     public class SearchResultPackageMetadata : INotifyPropertyChanged
     {
         private PackageStatus _status;
+
         public event PropertyChangedEventHandler PropertyChanged;
+
+        private static string[] _scalingFactor = new string[] {
+            "",
+            "K", // kilo
+            "M", // mega, million
+            "G", // giga, billion
+            "T"  // tera, 
+        };
 
         public string Id { get; set; }
 
         public NuGetVersion Version { get; set; }
+
+        private int _downloadCount;
+
+        public int DownloadCount
+        {
+            get
+            {
+                return _downloadCount;
+            }
+            set
+            {
+                _downloadCount = value;
+
+                double v = _downloadCount;
+                int exp = 0;
+                while (v > 1000)
+                {
+                    v /= 1000;
+                    ++exp;
+                }
+
+                _downloadCountText = string.Format(
+                    CultureInfo.CurrentCulture,
+                    "{0:###}{1}",
+                    v,
+                    _scalingFactor[exp]);
+                OnPropertyChanged(nameof(DownloadCountText));
+            }
+        }
+
+        private string _downloadCountText;
+
+        public string DownloadCountText
+        {
+            get
+            {
+                return _downloadCountText;
+            }
+        }
 
         public string Summary { get; set; }
 
