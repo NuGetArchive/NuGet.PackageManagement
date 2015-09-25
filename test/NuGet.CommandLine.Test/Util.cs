@@ -5,7 +5,6 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
-using System.Runtime.Versioning;
 using System.Text;
 using Moq;
 using Newtonsoft.Json.Linq;
@@ -352,11 +351,18 @@ namespace NuGet.CommandLine.Test
                         </configuration>");
         }
 
-        public static void VerifyResultSuccess(Tuple<int, string, string> result)
+        public static void VerifyResultSuccess(Tuple<int, string, string> result, string expectedOutputMessage = null)
         {
             Assert.True(
                 result.Item1 == 0,
                 "nuget.exe DID NOT SUCCEED: Ouput is " + result.Item2 + ". Error is " + result.Item3);
+
+            if (!string.IsNullOrEmpty(expectedOutputMessage))
+            {
+                Assert.True(
+                    result.Item2.Contains(expectedOutputMessage),
+                    "Expected output is " + expectedOutputMessage + ". Actual output is " + result.Item2);
+            }
         }
 
         public static void VerifyResultFailure(Tuple<int, string, string> result, string expectedErrorMessage)

@@ -30,29 +30,53 @@ namespace NuGet.CommandLine
             Source = GetEffectiveSourceFeedFolder();
             ValidatePath(Source);
 
+            // If the Source Feed Folder does not exist, it will be created.
+
             using (var packageStream = File.OpenRead(packagePath))
             {
                 try
                 {
                     var packageReader = new PackageReader(packageStream);
                     var packageIdentity = packageReader.GetIdentity();
-                    packageStream.Seek(0, SeekOrigin.Begin);
 
-                    var versionFolderPathContext = new VersionFolderPathContext(
-                        packageIdentity,
-                        Source,
-                        Console,
-                        fixNuspecIdCasing: false,
-                        extractNuspecOnly: true,
-                        normalizeFileNames: true);
+                    bool isValidPackage;
+                    if (OfflineFeedUtility.PackageExists(packageIdentity, Source, out isValidPackage))
+                    {
+                        // Package already exists. Verify if it is valid
+                        if (isValidPackage)
+                        {
+                            var message = string.Format(LocalizedResourceManager.GetString(
+                                nameof(NuGetResources.AddCommand_PackageAlreadyExists)), packageIdentity, Source);
 
-                    await NuGetPackageUtils.InstallFromSourceAsync(
-                        stream => packageStream.CopyToAsync(stream),
-                        versionFolderPathContext,
-                        token: CancellationToken.None);
+                            Console.LogInformation(message);
+                        }
+                        else
+                        {
+                            var message = string.Format(LocalizedResourceManager.GetString(
+                                nameof(NuGetResources.AddCommand_ExistingPackageInvalid)), packageIdentity, Source);
 
-                    Console.LogInformation(
-                        LocalizedResourceManager.GetString(nameof(NuGetResources.AddCommand_SuccessfullyAdded)));
+                            throw new CommandLineException(message);
+                        }
+                    }
+                    else
+                    {
+                        packageStream.Seek(0, SeekOrigin.Begin);
+                        var versionFolderPathContext = new VersionFolderPathContext(
+                            packageIdentity,
+                            Source,
+                            Console,
+                            fixNuspecIdCasing: false,
+                            extractNuspecOnly: true,
+                            normalizeFileNames: true);
+
+                        await NuGetPackageUtils.InstallFromSourceAsync(
+                            stream => packageStream.CopyToAsync(stream),
+                            versionFolderPathContext,
+                            token: CancellationToken.None);
+
+                        Console.LogInformation(
+                            LocalizedResourceManager.GetString(nameof(NuGetResources.AddCommand_SuccessfullyAdded)));
+                    }
                 }
                 catch (InvalidDataException)
                 {

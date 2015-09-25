@@ -61,6 +61,24 @@ namespace NuGet.CommandLine {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Package &apos;{0}&apos; already exists at feed &apos;{1}&apos; and is invalid..
+        /// </summary>
+        public static string AddCommand_ExistingPackageInvalid {
+            get {
+                return ResourceManager.GetString("AddCommand_ExistingPackageInvalid", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Package &apos;{0}&apos; already exists at feed &apos;{1}&apos;..
+        /// </summary>
+        public static string AddCommand_PackageAlreadyExists {
+            get {
+                return ResourceManager.GetString("AddCommand_PackageAlreadyExists", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Successfully added package &apos;{0}&apos; to feed &apos;{1}&apos;..
         /// </summary>
         public static string AddCommand_SuccessfullyAdded {
