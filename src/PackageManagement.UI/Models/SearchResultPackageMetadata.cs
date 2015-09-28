@@ -12,7 +12,8 @@ using NuGet.Versioning;
 
 namespace NuGet.PackageManagement.UI
 {
-    // This is the model class behind the package items in the infinite scroll list
+    // This is the model class behind the package items in the infinite scroll list.
+    // Some of its properties, such as Latest Version, Status, are fetched on-demand in the background.
     public class SearchResultPackageMetadata : INotifyPropertyChanged
     {
         private PackageStatus _status;
@@ -24,16 +25,56 @@ namespace NuGet.PackageManagement.UI
             "K", // kilo
             "M", // mega, million
             "G", // giga, billion
-            "T"  // tera, 
+            "T"  // tera,
         };
 
         public string Id { get; set; }
 
+        public string Author { get; set; }
+
         public NuGetVersion Version { get; set; }
 
-        private int _downloadCount;
+        // installed version of the pacakge.
+        public NuGetVersion InstalledVersion { get; set; }
 
-        public int DownloadCount
+        // When update is available, the latest version
+        private NuGetVersion _latestVersion;
+
+        public NuGetVersion LatestVersion
+        {
+            get
+            {
+                return _latestVersion;
+            }
+            set
+            {
+                if (!VersionEquals(_latestVersion, value))
+                {
+                    _latestVersion = value;
+                    OnPropertyChanged(nameof(LatestVersion));
+                }
+            }
+        }
+
+        private bool VersionEquals(NuGetVersion v1, NuGetVersion v2)
+        {
+            if (v1 == null && v2 == null)
+            {
+                return true;
+            }
+
+            if ((v1 == null && v2 != null) ||
+                (v1 != null && v2 == null))
+            {
+                return false;
+            }
+
+            return v1.Equals(v2, VersionComparison.Default);
+        }
+
+        private int? _downloadCount;
+
+        public int? DownloadCount
         {
             get
             {
@@ -42,20 +83,27 @@ namespace NuGet.PackageManagement.UI
             set
             {
                 _downloadCount = value;
-
-                double v = _downloadCount;
-                int exp = 0;
-                while (v > 1000)
+                if (_downloadCount.HasValue)
                 {
-                    v /= 1000;
-                    ++exp;
+                    double v = _downloadCount.Value;
+                    int exp = 0;
+                    while (v > 1000)
+                    {
+                        v /= 1000;
+                        ++exp;
+                    }
+
+                    _downloadCountText = string.Format(
+                        CultureInfo.CurrentCulture,
+                        "{0:G3}{1}",
+                        v,
+                        _scalingFactor[exp]);
+                }
+                else
+                {
+                    _downloadCountText = string.Empty;
                 }
 
-                _downloadCountText = string.Format(
-                    CultureInfo.CurrentCulture,
-                    "{0:###}{1}",
-                    v,
-                    _scalingFactor[exp]);
                 OnPropertyChanged(nameof(DownloadCountText));
             }
         }
@@ -72,23 +120,25 @@ namespace NuGet.PackageManagement.UI
 
         public string Summary { get; set; }
 
-        private bool StatusProviderRun { get; set; }
+        // Indicates whether the background loader has started.
+        private bool BackgroundLoaderRun { get; set; }
 
         public PackageStatus Status
         {
             get
             {
-                if (!StatusProviderRun)
+                if (!BackgroundLoaderRun)
                 {
-                    StatusProviderRun = true;
+                    BackgroundLoaderRun = true;
 
                     Task.Run(async () =>
                     {
-                        var status = await StatusProvider.Value;
+                        var result = await BackgroundLoader.Value;
 
                         await NuGetUIThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
 
-                        Status = status;
+                        Status = result.Status;
+                        LatestVersion = result.LatestVersion;
                     });
                 }
 
@@ -107,23 +157,23 @@ namespace NuGet.PackageManagement.UI
             }
         }
 
-        private Lazy<Task<PackageStatus>> _statusProvider;
+        private Lazy<Task<BackgroundLoaderResult>> _backgroundLoader;
 
-        public Lazy<Task<PackageStatus>> StatusProvider
+        internal Lazy<Task<BackgroundLoaderResult>> BackgroundLoader
         {
             get
             {
-                return _statusProvider;
+                return _backgroundLoader;
             }
 
             set
             {
-                if (_statusProvider != value)
+                if (_backgroundLoader != value)
                 {
-                    StatusProviderRun = false;
+                    BackgroundLoaderRun = false;
                 }
 
-                _statusProvider = value;
+                _backgroundLoader = value;
 
                 OnPropertyChanged(nameof(Status));
             }
@@ -153,5 +203,11 @@ namespace NuGet.PackageManagement.UI
         {
             return Id;
         }
+    }
+
+    internal class BackgroundLoaderResult
+    {
+        public PackageStatus Status { get; set; }
+        public NuGetVersion LatestVersion { get; set; }
     }
 }

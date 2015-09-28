@@ -26,6 +26,8 @@
         x:Key="SummaryToFontStyleConverter" />
       <ui:SummaryToStringConverter
         x:Key="SummaryToStringConverter" />
+      <ui:VersionToVersionForDisplayConverter
+        x:Key="VersionToVersionForDisplayConverter" />
     </ResourceDictionary>
   </UserControl.Resources>
   <Border
@@ -61,6 +63,24 @@
           Style="{StaticResource PackageIconImageStyle}"
           VerticalAlignment="Top"
           Margin="0,0,16,0" />
+        <ui:InstalledIndicator
+          x:Name="_checkMark"
+          Grid.Row="0"
+          Margin="18,20,0,0"
+          Width="16"
+          Height="16"
+          VerticalAlignment="Top"
+          Visibility="{Binding Status, Converter={StaticResource PackageStatusToInstallImageVisibilityConverter}}"
+          ToolTip="{x:Static resx:Resources.Tooltip_PackageInstalled}" />
+        <ui:UpdateAvailableIndicator
+          x:Name="_updateMark"
+          Grid.Row="0"
+          Margin="18,20,0,0"
+          Width="16"
+          Height="16"
+          VerticalAlignment="Top"
+          Visibility="{Binding Status, Converter={StaticResource PackageStatusToUpdateImageVisibilityConverter}}"
+        ToolTip="{x:Static resx:Resources.Tooltip_UpdateAvailable}" />
 
         <TextBlock
           Grid.Row="1"
@@ -79,6 +99,7 @@
         MinHeight="48">
         <Grid.RowDefinitions>
           <RowDefinition />
+          <RowDefinition />
           <RowDefinition
             Height="32"
             MaxHeight="32" />
@@ -90,8 +111,47 @@
           TextWrapping="NoWrap"
           AutomationProperties.AutomationId="id"
           Text="{Binding Id}" />
+
+        <Grid
+          Grid.Row="1">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="auto" />
+            <ColumnDefinition Width="auto" />
+            <ColumnDefinition Width="auto" />
+            <ColumnDefinition Width="auto" />
+            <ColumnDefinition />
+          </Grid.ColumnDefinitions>
+          <!-- author -->
+          <TextBlock
+            Grid.Column="0"
+            Width="210"
+            Text="{Binding Author}"
+            TextTrimming="CharacterEllipsis">
+          </TextBlock>
+          <!-- download count -->
+          <TextBlock
+            Grid.Column="1"
+            Width="60"
+            TextAlignment="Right"
+            Margin="40,0,0,0"
+            Text="{Binding DownloadCountText}" />
+          <!-- installed version -->
+          <TextBlock
+            Grid.Column="2"
+            Width="240"
+            Margin="45,0,0,0"
+            Text="{Binding InstalledVersion, Converter={StaticResource VersionToVersionForDisplayConverter}}" />
+          <!-- latest version -->
+          <TextBlock
+            Grid.Column="3"
+            MinWidth="170"
+            Margin="45,0,0,0"
+            Text="{Binding LatestVersion, Converter={StaticResource VersionToVersionForDisplayConverter}}"
+            />
+        </Grid>
+
         <TextBlock
-          Grid.Row="1"
+          Grid.Row="2"
           Text="{Binding Summary, Converter={StaticResource SummaryToStringConverter}}"
           FontStyle="{Binding Summary, Converter={StaticResource SummaryToFontStyleConverter}}"
           TextTrimming="CharacterEllipsis"
@@ -109,25 +169,6 @@
           </TextBlock>
         </Grid.ToolTip>
       </Grid>
-
-      <ui:InstalledIndicator
-        x:Name="_checkMark"
-        Grid.Column="2"
-        Margin="16,0,12,0"
-        Width="16"
-        Height="16"
-        VerticalAlignment="Top"
-        Visibility="{Binding Status, Converter={StaticResource PackageStatusToInstallImageVisibilityConverter}}"
-        ToolTip="{x:Static resx:Resources.Tooltip_PackageInstalled}" />
-      <ui:UpdateAvailableIndicator
-        x:Name="_updateMark"
-        Grid.Column="2"
-        Margin="16,0,12,0"
-        Width="16"
-        Height="16"
-        VerticalAlignment="Top"
-        Visibility="{Binding Status, Converter={StaticResource PackageStatusToUpdateImageVisibilityConverter}}"
-        ToolTip="{x:Static resx:Resources.Tooltip_UpdateAvailable}" />
     </Grid>
   </Border>
 </UserControl>

@@ -621,7 +621,7 @@ namespace NuGet.PackageManagement.UI
                         continue;
                     }
 
-                    package.StatusProvider = new Lazy<Task<PackageStatus>>(async () => await GetPackageStatus(
+                    package.BackgroundLoader = new Lazy<Task<BackgroundLoaderResult>>(async () => await GetPackageInfo(
                        package.Id,
                        installedPackages,
                        package.Versions));
@@ -646,14 +646,14 @@ namespace NuGet.PackageManagement.UI
         }
 
         /// <summary>
-        /// Gets the status of the package specified by <paramref name="packageId" /> in
+        /// Gets the background result of the package specified by <paramref name="packageId" /> in
         /// the specified installation target.
         /// </summary>
         /// <param name="packageId">package id.</param>
         /// <param name="installedPackages">All installed pacakges.</param>
         /// <param name="allVersions">List of all versions of the package.</param>
-        /// <returns>The status of the package in the installation target.</returns>
-        private static async Task<PackageStatus> GetPackageStatus(
+        /// <returns>The background result of the package in the installation target.</returns>
+        private static async Task<BackgroundLoaderResult> GetPackageInfo(
             string packageId,
             IReadOnlyList<Packaging.PackageReference> installedPackages,
             Lazy<Task<IEnumerable<VersionInfo>>> allVersions)
@@ -671,24 +671,34 @@ namespace NuGet.PackageManagement.UI
                 .OrderBy(r => r.PackageIdentity.Version)
                 .FirstOrDefault();
 
-            PackageStatus status;
+            BackgroundLoaderResult result;
             if (minimumInstalledPackage != null)
             {
                 if (minimumInstalledPackage.PackageIdentity.Version < latestStableVersion)
                 {
-                    status = PackageStatus.UpdateAvailable;
+                    result = new BackgroundLoaderResult()
+                    {
+                        LatestVersion = latestStableVersion,
+                        Status = PackageStatus.UpdateAvailable
+                    };
                 }
                 else
                 {
-                    status = PackageStatus.Installed;
+                    result = new BackgroundLoaderResult()
+                    {
+                        Status = PackageStatus.Installed
+                    };
                 }
             }
             else
             {
-                status = PackageStatus.NotInstalled;
+                result = new BackgroundLoaderResult()
+                {
+                    Status = PackageStatus.NotInstalled
+                };
             }
 
-            return status;
+            return result;
         }
 
         private void SearchControl_SearchStart(object sender, EventArgs e)
