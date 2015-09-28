@@ -3152,6 +3152,55 @@ namespace NuGet.CommandLine {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Adds all the packages from a given feed to the offline feed or the specified destination feed if it is a file source feed. http feeds are not supported..
+        /// </summary>
+        internal static string InitCommandDescription {
+            get {
+                return ResourceManager.GetString("InitCommandDescription", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Specifies the fileSourceFolder. If not specified, the offline feed will be used; as configured or the default one: &quot;%USERPROFILE%\.nuget\offlinefeed&quot;. Cannot be an http source..
+        /// </summary>
+        internal static string InitCommandSourceDescription {
+            get {
+                return ResourceManager.GetString("InitCommandSourceDescription", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Specify the path to the feed to be added to the offline feed. Optionally, you can given an explicit destination feed.
+        /// </summary>
+        internal static string InitCommandUsageDescription {
+            get {
+                return ResourceManager.GetString("InitCommandUsageDescription", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to nuget init c:\foo
+        ///
+        ///nuget init c:\foo c:\bar
+        ///
+        ///nuget add \\foo\packages \\bar\packages.
+        /// </summary>
+        internal static string InitCommandUsageExamples {
+            get {
+                return ResourceManager.GetString("InitCommandUsageExamples", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to &lt;srcFeedPath&gt; [&lt;destFeedPath&gt;] [options].
+        /// </summary>
+        internal static string InitCommandUsageSummary {
+            get {
+                return ResourceManager.GetString("InitCommandUsageSummary", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Installs a package using the specified sources. If no sources are specified, all sources defined in the NuGet configuration file are used. If the configuration file specifies no sources, uses the default NuGet feed..
         /// </summary>
         internal static string InstallCommandDescription {

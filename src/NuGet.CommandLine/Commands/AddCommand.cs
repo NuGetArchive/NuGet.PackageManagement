@@ -17,8 +17,10 @@ namespace NuGet.CommandLine
 
         public override async Task ExecuteCommandAsync()
         {
+            // Arguments[0] will not be null at this point.
+            // Because, this command has MinArgs set to 1.
             var packagePath = Arguments[0];
-            ValidatePath(packagePath);
+            OfflineFeedUtility.ValidatePath(packagePath);
 
             if (!File.Exists(packagePath))
             {
@@ -27,98 +29,20 @@ namespace NuGet.CommandLine
                     packagePath);
             }
 
-            Source = GetEffectiveSourceFeedFolder();
-            ValidatePath(Source);
+            Source = OfflineFeedUtility.GetEffectiveSourceFeedFolder(Source, Settings);
+            OfflineFeedUtility.ValidatePath(Source);
 
             // If the Source Feed Folder does not exist, it will be created.
 
-            using (var packageStream = File.OpenRead(packagePath))
-            {
-                try
-                {
-                    var packageReader = new PackageReader(packageStream);
-                    var packageIdentity = packageReader.GetIdentity();
+            var offlineFeedAddContext = new OfflineFeedAddContext(
+                packagePath,
+                Source,
+                Console, // IConsole is an ILogger
+                throwIfSourcePackageIsInvalid: true,
+                throwIfPackageExistsAndInvalid: true,
+                throwIfPackageExists: false);
 
-                    bool isValidPackage;
-                    if (OfflineFeedUtility.PackageExists(packageIdentity, Source, out isValidPackage))
-                    {
-                        // Package already exists. Verify if it is valid
-                        if (isValidPackage)
-                        {
-                            var message = string.Format(LocalizedResourceManager.GetString(
-                                nameof(NuGetResources.AddCommand_PackageAlreadyExists)), packageIdentity, Source);
-
-                            Console.LogInformation(message);
-                        }
-                        else
-                        {
-                            var message = string.Format(LocalizedResourceManager.GetString(
-                                nameof(NuGetResources.AddCommand_ExistingPackageInvalid)), packageIdentity, Source);
-
-                            throw new CommandLineException(message);
-                        }
-                    }
-                    else
-                    {
-                        packageStream.Seek(0, SeekOrigin.Begin);
-                        var versionFolderPathContext = new VersionFolderPathContext(
-                            packageIdentity,
-                            Source,
-                            Console,
-                            fixNuspecIdCasing: false,
-                            extractNuspecOnly: true,
-                            normalizeFileNames: true);
-
-                        await NuGetPackageUtils.InstallFromSourceAsync(
-                            stream => packageStream.CopyToAsync(stream),
-                            versionFolderPathContext,
-                            token: CancellationToken.None);
-
-                        Console.LogInformation(
-                            LocalizedResourceManager.GetString(nameof(NuGetResources.AddCommand_SuccessfullyAdded)));
-                    }
-                }
-                catch (InvalidDataException)
-                {
-                    throw new CommandLineException(
-                        LocalizedResourceManager.GetString(nameof(NuGetResources.NupkgPath_InvalidNupkg)),
-                        packagePath);
-                }
-            }
-        }
-
-        private string GetEffectiveSourceFeedFolder()
-        {
-            if (string.IsNullOrEmpty(Source))
-            {
-                return SettingsUtility.GetOfflineFeed(Settings);
-            }
-
-            return Source;
-        }
-
-        private void ValidatePath(string path)
-        {
-            Uri pathUri;
-            if (!Uri.TryCreate(path, UriKind.RelativeOrAbsolute, out pathUri))
-            {
-                throw new CommandLineException(
-                    LocalizedResourceManager.GetString(nameof(NuGetResources.Path_Invalid)),
-                    path);
-            }
-
-            if (!pathUri.IsAbsoluteUri)
-            {
-                path = Path.GetFullPath(path);
-                pathUri = new Uri(path);
-            }
-
-            if (!pathUri.IsFile && !pathUri.IsUnc)
-            {
-                throw new CommandLineException(
-                    LocalizedResourceManager.GetString(nameof(NuGetResources.Path_Invalid_NotFileNotUnc)),
-                    path);
-            }
+            await OfflineFeedUtility.AddPackageToSource(offlineFeedAddContext, CancellationToken.None);
         }
     }
 }
