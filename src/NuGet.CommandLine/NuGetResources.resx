@@ -6091,4 +6091,10 @@ Oluşturma sırasında NuGet'in paketleri indirmesini önlemek için, Visual Stu
   <data name="AddCommand_ExistingPackageInvalid" xml:space="preserve">
     <value>Package '{0}' already exists at feed '{1}' and is invalid.</value>
   </data>
+  <data name="InitCommand_FeedContainsNoPackages" xml:space="preserve">
+    <value>Feed '{0}' contains no packages.</value>
+  </data>
+  <data name="InitCommand_FeedIsNotFound" xml:space="preserve">
+    <value>Feed '{0}' is not found.</value>
+  </data>
 </root>

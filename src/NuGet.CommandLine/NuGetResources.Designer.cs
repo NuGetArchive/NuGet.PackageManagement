@@ -4201,6 +4201,24 @@ namespace NuGet.CommandLine {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Feed &apos;{0}&apos; contains no packages..
+        /// </summary>
+        public static string InitCommand_FeedContainsNoPackages {
+            get {
+                return ResourceManager.GetString("InitCommand_FeedContainsNoPackages", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Feed &apos;{0}&apos; is not found..
+        /// </summary>
+        public static string InitCommand_FeedIsNotFound {
+            get {
+                return ResourceManager.GetString("InitCommand_FeedIsNotFound", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to &apos;{0}&apos; contains invalid package references. .
         /// </summary>
         public static string InstallCommandInvalidPackageReference {

@@ -10,7 +10,6 @@ namespace NuGet.CommandLine.Test
 {
     public class NuGetAddCommandTests
     {
-        private static readonly string NupkgFileFormat = "{0}.{1}.nupkg";
         private class TestInfo : IDisposable
         {
             public string NuGetExePath { get; }
@@ -64,43 +63,40 @@ namespace NuGet.CommandLine.Test
             }
         }
 
-        private static void VerifyPackageExists(
-            PackageIdentity packageIdentity,
-            string packagesDirectory)
+        [Fact]
+        public void AddCommand_Success_NoSourceSpecified()
         {
-            string normalizedId = packageIdentity.Id.ToLowerInvariant();
-            string normalizedVersion = packageIdentity.Version.ToNormalizedString();
+            // Arrange
+            using (var testInfo = new TestInfo())
+            {
+                testInfo.Init();
 
-            var packageIdDirectory = Path.Combine(packagesDirectory, normalizedId);
-            Assert.True(Directory.Exists(packageIdDirectory));
+                var args = new string[]
+                {
+                    "add",
+                    testInfo.RandomNupkgFilePath
+                };
 
-            var packageVersionDirectory = Path.Combine(packageIdDirectory, normalizedVersion);
-            Assert.True(Directory.Exists(packageVersionDirectory));
+                var config = @"<?xml version=""1.0"" encoding=""utf-8""?>
+<configuration>
+<config>
+<add key=""offlineFeed"" value=""" + testInfo.SourceParamFolder + @""" />
+</config>
+</configuration>";
 
-            var nupkgFileName = GetNupkgFileName(normalizedId, normalizedVersion);
+                File.WriteAllText(Path.Combine(testInfo.WorkingPath, "nuget.config"), config);
 
-            var nupkgFilePath = Path.Combine(packageVersionDirectory, nupkgFileName);
-            Assert.True(File.Exists(nupkgFilePath));
+                // Act
+                var result = CommandRunner.Run(
+                    testInfo.NuGetExePath,
+                    testInfo.WorkingPath,
+                    string.Join(" ", args),
+                    waitForExit: true);
 
-            var nupkgSHAFilePath = Path.Combine(packageVersionDirectory, nupkgFileName + ".sha512");
-            Assert.True(File.Exists(nupkgSHAFilePath));
-
-            var nuspecFilePath = Path.Combine(packageVersionDirectory, normalizedId + ".nuspec");
-            Assert.True(File.Exists(nuspecFilePath));
-        }
-
-        private static void VerifyPackageDoesNotExist(
-            PackageIdentity packageIdentity,
-            string packagesDirectory)
-        {
-            string normalizedId = packageIdentity.Id.ToLowerInvariant();
-            var packageIdDirectory = Path.Combine(packagesDirectory, normalizedId);
-            Assert.False(Directory.Exists(packageIdDirectory));
-        }
-
-        private static string GetNupkgFileName(string normalizedId, string normalizedVersion)
-        {
-            return string.Format(NupkgFileFormat, normalizedId, normalizedVersion);
+                // Assert
+                Util.VerifyResultSuccess(result);
+                Util.VerifyPackageExists(testInfo.Package, testInfo.SourceParamFolder);
+            }
         }
 
         [Fact]
@@ -128,7 +124,7 @@ namespace NuGet.CommandLine.Test
 
                 // Assert
                 Util.VerifyResultSuccess(result);
-                VerifyPackageExists(testInfo.Package, testInfo.SourceParamFolder);
+                Util.VerifyPackageExists(testInfo.Package, testInfo.SourceParamFolder);
             }
         }
 
@@ -159,7 +155,7 @@ namespace NuGet.CommandLine.Test
                 // Assert
                 Util.VerifyResultSuccess(result);
 
-                VerifyPackageExists(testInfo.Package, testInfo.SourceParamFolder);
+                Util.VerifyPackageExists(testInfo.Package, testInfo.SourceParamFolder);
             }
         }
 
@@ -190,7 +186,7 @@ namespace NuGet.CommandLine.Test
                 // Assert
                 Util.VerifyResultSuccess(result);
 
-                VerifyPackageExists(testInfo.Package, testInfo.SourceParamFolder);
+                Util.VerifyPackageExists(testInfo.Package, testInfo.SourceParamFolder);
             }
         }
 
@@ -219,7 +215,7 @@ namespace NuGet.CommandLine.Test
 
                 // Assert
                 Util.VerifyResultSuccess(result);
-                VerifyPackageExists(testInfo.Package, testInfo.SourceParamFolder);
+                Util.VerifyPackageExists(testInfo.Package, testInfo.SourceParamFolder);
 
                 // Main Act
                 result = CommandRunner.Run(
@@ -261,7 +257,7 @@ namespace NuGet.CommandLine.Test
 
                 // Assert
                 Util.VerifyResultSuccess(result);
-                VerifyPackageExists(testInfo.Package, testInfo.SourceParamFolder);
+                Util.VerifyPackageExists(testInfo.Package, testInfo.SourceParamFolder);
 
                 var versionFolderPathResolver = new VersionFolderPathResolver(
                     testInfo.SourceParamFolder,
@@ -313,7 +309,7 @@ namespace NuGet.CommandLine.Test
                     = string.Format(NuGetResources.Path_Invalid_NotFileNotUnc, testInfo.SourceParamFolder);
                 Util.VerifyResultFailure(result, expectedErrorMessage);
 
-                VerifyPackageDoesNotExist(testInfo.Package, testInfo.SourceParamFolder);
+                Util.VerifyPackageDoesNotExist(testInfo.Package, testInfo.SourceParamFolder);
             }
         }
 
@@ -347,7 +343,7 @@ namespace NuGet.CommandLine.Test
 
                 Util.VerifyResultFailure(result, expectedErrorMessage);
 
-                VerifyPackageDoesNotExist(testInfo.Package, testInfo.SourceParamFolder);
+                Util.VerifyPackageDoesNotExist(testInfo.Package, testInfo.SourceParamFolder);
             }
         }
 
@@ -381,7 +377,7 @@ namespace NuGet.CommandLine.Test
 
                 Util.VerifyResultFailure(result, expectedErrorMessage);
 
-                VerifyPackageDoesNotExist(testInfo.Package, testInfo.SourceParamFolder);
+                Util.VerifyPackageDoesNotExist(testInfo.Package, testInfo.SourceParamFolder);
             }
         }
 
@@ -415,7 +411,7 @@ namespace NuGet.CommandLine.Test
 
                 Util.VerifyResultFailure(result, expectedErrorMessage);
 
-                VerifyPackageDoesNotExist(testInfo.Package, testInfo.SourceParamFolder);
+                Util.VerifyPackageDoesNotExist(testInfo.Package, testInfo.SourceParamFolder);
             }
         }
 
@@ -449,7 +445,7 @@ namespace NuGet.CommandLine.Test
 
                 Util.VerifyResultFailure(result, expectedErrorMessage);
 
-                VerifyPackageDoesNotExist(testInfo.Package, testInfo.SourceParamFolder);
+                Util.VerifyPackageDoesNotExist(testInfo.Package, testInfo.SourceParamFolder);
             }
         }
     }

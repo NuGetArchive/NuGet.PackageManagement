@@ -10,6 +10,7 @@ using Moq;
 using Newtonsoft.Json.Linq;
 using NuGet.Frameworks;
 using NuGet.Packaging;
+using NuGet.Packaging.Core;
 using NuGet.Versioning;
 using Xunit;
 
@@ -17,6 +18,8 @@ namespace NuGet.CommandLine.Test
 {
     public static class Util
     {
+        private static readonly string NupkgFileFormat = "{0}.{1}.nupkg";
+
         public static string CreateTestPackage(
             string packageId,
             string version,
@@ -374,6 +377,65 @@ namespace NuGet.CommandLine.Test
             Assert.True(
                 result.Item3.Contains(expectedErrorMessage),
                 "Expected error is " + expectedErrorMessage + ". Actual error is " + result.Item3);
+        }
+
+        public static void VerifyPackageExists(
+            PackageIdentity packageIdentity,
+            string packagesDirectory)
+        {
+            string normalizedId = packageIdentity.Id.ToLowerInvariant();
+            string normalizedVersion = packageIdentity.Version.ToNormalizedString();
+
+            var packageIdDirectory = Path.Combine(packagesDirectory, normalizedId);
+            Assert.True(Directory.Exists(packageIdDirectory));
+
+            var packageVersionDirectory = Path.Combine(packageIdDirectory, normalizedVersion);
+            Assert.True(Directory.Exists(packageVersionDirectory));
+
+            var nupkgFileName = GetNupkgFileName(normalizedId, normalizedVersion);
+
+            var nupkgFilePath = Path.Combine(packageVersionDirectory, nupkgFileName);
+            Assert.True(File.Exists(nupkgFilePath));
+
+            var nupkgSHAFilePath = Path.Combine(packageVersionDirectory, nupkgFileName + ".sha512");
+            Assert.True(File.Exists(nupkgSHAFilePath));
+
+            var nuspecFilePath = Path.Combine(packageVersionDirectory, normalizedId + ".nuspec");
+            Assert.True(File.Exists(nuspecFilePath));
+        }
+
+        public static void VerifyPackageDoesNotExist(
+            PackageIdentity packageIdentity,
+            string packagesDirectory)
+        {
+            string normalizedId = packageIdentity.Id.ToLowerInvariant();
+            var packageIdDirectory = Path.Combine(packagesDirectory, normalizedId);
+            Assert.False(Directory.Exists(packageIdDirectory));
+        }
+
+        public static void VerifyPackagesExist(
+            IList<PackageIdentity> packageIdentity,
+            string packagesDirectory)
+        {
+            foreach(var package in packageIdentity)
+            {
+                VerifyPackageExists(package, packagesDirectory);
+            }
+        }
+
+        public static void VerifyPackagesDoNotExist(
+            IList<PackageIdentity> packageIdentity,
+            string packagesDirectory)
+        {
+            foreach (var package in packageIdentity)
+            {
+                VerifyPackageDoesNotExist(package, packagesDirectory);
+            }
+        }
+
+        private static string GetNupkgFileName(string normalizedId, string normalizedVersion)
+        {
+            return string.Format(NupkgFileFormat, normalizedId, normalizedVersion);
         }
     }
 }
